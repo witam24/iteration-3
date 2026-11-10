@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="zh-Hant-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>程式測試及除錯實驗室</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&display=swap">
+<style>
+/* Layout: numbered tabs, one "lab bench" per tab; every bench pairs a requirement with an editor students run and check. */
+:root{
+  --paper:#EEF2EF; --surface:#FFFFFF; --sunk:#E3E9E5; --ink:#18212B; --muted:#56616B; --line:#CDD6D1;
+  --accent:#0E6B66; --accent-soft:#D5ECE9;
+  --ok:#2F7D3A; --ok-soft:#DDF0DF; --bad:#B42318; --bad-soft:#FBE3E0; --warn:#9A5B00; --warn-soft:#FBEED6;
+  --syn:#7A4FD0; --run:#C8372D; --log:#0E6B66;
+  --code-bg:#1C232D; --code-fg:#E6EDF3; --code-dim:#7D8A99; --code-hl:#2D3A4A; --code-kw:#F0A86B; --code-str:#9ED69B; --code-num:#8FC7FF; --code-com:#7D8A99; --code-cur:#3B4A2A;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11171C; --surface:#182129; --sunk:#0D1317; --ink:#E5ECEA; --muted:#9AA8AE; --line:#2B3842;
+  --accent:#5CC4BB; --accent-soft:#163A38;
+  --ok:#6FD07D; --ok-soft:#173523; --bad:#FF8A7E; --bad-soft:#3E1C19; --warn:#F2B75E; --warn-soft:#3A2A10;
+  --syn:#B79BFF; --run:#FF8A7E; --log:#5CC4BB;
+  --code-bg:#0B1015; --code-hl:#1F2B38; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11171C; --surface:#182129; --sunk:#0D1317; --ink:#E5ECEA; --muted:#9AA8AE; --line:#2B3842;
+  --accent:#5CC4BB; --accent-soft:#163A38;
+  --ok:#6FD07D; --ok-soft:#173523; --bad:#FF8A7E; --bad-soft:#3E1C19; --warn:#F2B75E; --warn-soft:#3A2A10;
+  --syn:#B79BFF; --run:#FF8A7E; --log:#5CC4BB;
+  --code-bg:#0B1015; --code-hl:#1F2B38; color-scheme:dark}
+
+html{font-size:16px}
+*{box-sizing:border-box;font-variant-ligatures:none}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:1rem;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+.wrap{max-width:1080px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:clamp(1.8rem,4.5vw,2.6rem);font-weight:900}
+h2{font-size:clamp(1.4rem,3vw,1.8rem);font-weight:900}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0}
+code,.mono,pre,textarea.ed{font-family:var(--f-mono)}
+:not(pre)>code{background:var(--sunk);padding:1px 5px;border-radius:4px;font-size:.9em}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.cite{color:var(--muted);font-size:.8rem;white-space:nowrap}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+[hidden]{display:none!important}
+
+/* header + tabs */
+header.top{padding-block:28px 0;display:grid;gap:6px}
+.top-row{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.top-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.eyebrow{font-size:.8rem;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.lang-btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:4px 12px;cursor:pointer;font-weight:500;font-size:.9rem}
+.lang-btn:hover{border-color:var(--accent);color:var(--accent)}
+.size-ctl{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.size-ctl button{width:2.3rem;height:2rem;border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;font-weight:700}
+.size-ctl button:hover{border-color:var(--accent);color:var(--accent)}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:2px solid var(--line);margin:14px 0 24px}
+nav.tabs button{flex:none;background:none;border:0;padding:10px 14px 9px;cursor:pointer;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+nav.tabs button .n{font-family:var(--f-mono);font-size:.8em;margin-right:6px;color:var(--line)}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs button[aria-selected="true"] .n{color:var(--accent)}
+nav.tabs button:hover{color:var(--ink)}
+
+section.tab{display:grid;gap:20px}
+.bench-head{display:grid;gap:8px}
+.bench-head .tag{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.1em;color:var(--accent);font-weight:600}
+.goal{max-width:70ch;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:14px;min-width:0}
+.scene{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.pill{font-size:.75rem;font-weight:700;letter-spacing:.06em;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;font-size:.95rem}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* static code */
+pre.code{margin:0;background:var(--code-bg);color:var(--code-fg);border-radius:10px;padding:12px 0;overflow-x:auto;font-size:.875rem;line-height:1.65}
+pre.code .ln{display:block;padding:0 16px 0 0;white-space:pre}
+pre.code .ln::before{content:attr(data-n);display:inline-block;width:2.6em;padding-right:.9em;text-align:right;color:var(--code-dim);user-select:none}
+.kw{color:var(--code-kw)}.st{color:var(--code-str)}.nu{color:var(--code-num)}.cm{color:var(--code-com);font-style:italic}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:.875rem;font-weight:500;line-height:1.3}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.primary:hover:not(:disabled){color:var(--surface);filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* tables */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{font-size:.8rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+td.num,td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td pre{margin:0;font-family:var(--f-mono);font-size:.85rem;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* task list layout (left list + main) */
+.tasks{display:grid;grid-template-columns:15rem minmax(0,1fr);gap:16px;align-items:start}
+.tlist{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;display:grid;gap:2px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px)}
+.tlist button{display:grid;grid-template-columns:1.8rem minmax(0,1fr) 1.2rem;gap:6px;align-items:center;text-align:left;border:0;background:none;border-radius:8px;padding:7px 8px;cursor:pointer}
+.tlist button:hover{background:var(--sunk)}
+.tlist button.cur{background:var(--accent-soft)}
+.tlist .qn{font-family:var(--f-mono);font-size:.8rem;color:var(--muted)}
+.tlist button.cur .qn{color:var(--accent);font-weight:600}
+.tlist .qt{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tlist .qs{color:var(--ok);font-weight:700;text-align:center}
+.tlist .prog{font-size:.8rem;color:var(--muted);padding:6px 8px 4px}
+@media (max-width:860px){
+  .tasks{grid-template-columns:minmax(0,1fr)}
+  .tlist{position:static;display:flex;flex-wrap:wrap;gap:4px}
+  .tlist button{grid-template-columns:auto auto;padding:4px 10px;border:1px solid var(--line)}
+  .tlist .qt{display:none}
+  .tlist .prog{width:100%}
+}
+
+/* requirement box */
+.req{border-left:4px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 8px 8px 0}
+.req b.t{font-family:var(--f-display);color:var(--warn);margin-right:6px}
+
+/* editor */
+.edbox{display:grid;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--code-bg);background:var(--code-bg)}
+.edbar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;background:var(--code-hl);color:var(--code-fg);font-size:.8rem}
+.edbar button{background:none;border:1px solid var(--code-dim);color:var(--code-fg);border-radius:6px;padding:2px 9px;cursor:pointer;font-size:.8rem}
+.edbar button:hover{border-color:var(--code-fg)}
+.edgrid{display:grid;grid-template-columns:auto minmax(0,1fr);max-height:28rem;overflow:auto}
+.gutter{padding:10px 8px 10px 10px;text-align:right;color:var(--code-dim);font-family:var(--f-mono);font-size:.875rem;line-height:1.65;user-select:none;white-space:pre}
+.gutter .e{color:#FF8A7E;font-weight:700}
+textarea.ed{display:block;width:100%;border:0;outline:0;resize:none;background:transparent;color:var(--code-fg);font-size:.875rem;line-height:1.65;padding:10px 12px 10px 4px;white-space:pre;overflow:hidden;tab-size:4;caret-color:#E8D44D;min-height:6rem}
+textarea.ed:focus-visible{outline:none}
+.edbox:focus-within{box-shadow:0 0 0 3px var(--accent)}
+pre.code.fill{border-radius:0}
+pre.code .ln.errl::before{color:#FF8A7E;font-weight:700}
+input.blank{font-family:var(--f-mono);font-size:inherit;line-height:1.3;color:var(--code-fg);background:var(--code-hl);border:0;border-bottom:2px solid #E8D44D;border-radius:4px 4px 0 0;padding:1px 6px;margin:0 2px;min-width:12ch;max-width:100%}
+input.blank:focus-visible{outline:2px solid #E8D44D;outline-offset:1px}
+.own{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:620px){.own{grid-template-columns:minmax(0,1fr)}}
+.own textarea{width:100%;font-family:var(--f-mono);font-size:.85rem;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--paper);resize:vertical;min-height:4.2rem}
+.console{background:var(--code-bg);color:var(--code-fg);font-family:var(--f-mono);font-size:.85rem;border-radius:8px;padding:8px 12px;min-height:4.2rem;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;max-height:14rem;overflow:auto}
+.console .err{color:#FF8A7E}
+.lab{font-size:.75rem;letter-spacing:.08em;font-weight:700;color:var(--muted);display:block;margin-bottom:4px}
+.verdict{font-weight:700;padding:9px 12px;border-radius:8px}
+.verdict small{display:block;font-weight:400;color:var(--ink);margin-top:2px}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)}
+.verdict.no{background:var(--bad-soft);color:var(--bad)}
+tr.pass td.res{color:var(--ok);font-weight:700}
+tr.fail td.res{color:var(--bad);font-weight:700}
+tr.fail td.act{background:var(--bad-soft)}
+.etag{display:inline-block;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:999px;font-family:var(--f-body);white-space:nowrap}
+.etag.syntax{color:var(--syn);border:1px solid var(--syn)}
+.etag.runtime{color:var(--run);border:1px solid var(--run)}
+.etag.logic{color:var(--log);border:1px solid var(--log)}
+.hint{background:var(--warn-soft);border-radius:8px;padding:8px 12px;font-size:.9rem}
+.loading{font-size:.85rem;color:var(--muted)}
+.ctable td:nth-child(3){white-space:nowrap}
+
+/* boundary */
+.numline{width:100%;overflow-x:auto}
+.numline svg{display:block;width:100%;min-width:520px;height:auto}
+.addrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.addrow input{width:9rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.cat{font-size:.78rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.cat.normal{background:var(--ok-soft);color:var(--ok)}
+.cat.edge{background:var(--warn-soft);color:var(--warn)}
+.cat.invalid{background:var(--bad-soft);color:var(--bad)}
+.x{border:none;background:none;cursor:pointer;color:var(--muted);font-size:1.1rem;line-height:1;padding:0 4px}
+.cover{display:grid;gap:10px;align-content:start}
+.cover-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.cv{border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:.85rem;display:grid;gap:2px}
+.cv.done{border-style:solid;border-color:var(--ok);background:var(--ok-soft)}
+.cv b{font-family:var(--f-mono);font-size:.82rem}
+.meter{height:10px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.goals{display:grid;gap:6px;font-size:.92rem;margin:0;padding:0;list-style:none}
+.goals li{display:flex;gap:8px}
+.tick{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;margin-top:3px;display:grid;place-items:center;font-size:.75rem;font-weight:700}
+.tick.done{border-color:var(--ok);background:var(--ok);color:var(--surface)}
+
+/* error types */
+.etype{display:grid;gap:6px;padding:16px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.etype h3{display:flex;gap:8px;align-items:center}
+.etype .sw{width:12px;height:12px;border-radius:3px;flex:none}
+.etype dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:.9rem}
+.etype dt{color:var(--muted);font-weight:700}
+.etype dd{margin:0}
+.t-syntax{--c:var(--syn)}.t-runtime{--c:var(--run)}.t-logic{--c:var(--log)}
+.etype .sw{background:var(--c)}
+pre.code.pick .ln{cursor:pointer}
+pre.code.pick .ln:hover{background:var(--code-hl)}
+pre.code .ln.sel{background:var(--code-hl);box-shadow:inset 3px 0 0 var(--code-kw)}
+pre.code .ln.good{background:rgba(111,208,125,.18);box-shadow:inset 3px 0 0 #6FD07D}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.choice{padding:8px 14px;border-radius:8px;border:2px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:.9rem}
+.choice[aria-pressed="true"]{border-color:var(--c);color:var(--c)}
+.fb{border-radius:10px;padding:12px 14px;display:grid;gap:6px;font-size:.95rem}
+.fb.ok{background:var(--ok-soft)}
+.fb.no{background:var(--bad-soft)}
+.fb h4{margin:0;font-size:.95rem}
+.stepno{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;color:var(--accent);font-weight:600}
+
+/* tracer */
+.dbg{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.dbg{grid-template-columns:1fr}}
+pre.code .ln.cur{background:var(--code-cur);box-shadow:inset 3px 0 0 #E8D44D}
+.vars{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.var{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.var .k{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.var .v{font-family:var(--f-mono);font-size:1.05rem;font-weight:600;font-variant-numeric:tabular-nums}
+.var.chg{border-color:var(--warn);background:var(--warn-soft)}
+.trace{max-height:280px;overflow:auto}
+.trace tr.now td{background:var(--warn-soft)}
+
+/* efficiency */
+.hwrow{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+.hw{aspect-ratio:1/1.1;max-width:100%;border-radius:8px;border:2px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;font-size:.75rem;line-height:1.2;padding:2px;text-align:center}
+.hw b{display:block;font-family:var(--f-mono);font-size:.875rem}
+.hw.miss{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.scan{display:grid;grid-template-columns:72px repeat(10,minmax(0,1fr));gap:6px;align-items:center;font-size:.8rem}
+.scan .lab2{font-weight:700;font-family:var(--f-mono)}
+.scan i{display:block;height:14px;border-radius:4px;background:var(--sunk)}
+.scan i.on{background:var(--accent)}
+.counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.count{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.count .n{font-family:var(--f-mono);font-size:1.8rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.predict{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.predict input{width:6rem;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-family:var(--f-mono)}
+.slider{display:grid;gap:4px}
+.slider input{width:100%;accent-color:var(--accent)}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:minmax(90px,170px) 1fr auto;gap:10px;align-items:center;font-size:.875rem}
+.bar .track{height:16px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.bar .track i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.bar .track i.mem{background:var(--warn)}
+.bar .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;min-width:5ch;text-align:right}
+
+/* quiz */
+.mcq{display:grid;gap:12px}
+.opts{display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:auto 1fr;gap:10px;text-align:left;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-size:.95rem;align-items:start}
+.opt .lt{font-family:var(--f-mono);font-weight:700}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt .why{grid-column:2;font-size:.85rem;color:var(--muted)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.score{font-family:var(--f-mono);font-weight:600}
+footer{margin-top:32px;font-size:.85rem;color:var(--muted);display:grid;gap:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:520px){.hwrow{grid-template-columns:repeat(5,minmax(0,1fr))}.scan{grid-template-columns:52px repeat(10,minmax(0,1fr));gap:3px}}
+</style>
+</head><body>
+
+<div class="wrap" id="app"></div>
+
+<!-- ======================= 中文版 ======================= -->
+<template id="tpl-zh">
+<header class="top">
+  <div class="top-row">
+    <div>
+      <div class="eyebrow">必修 D(d)　計算思維與程式編寫 · Python</div>
+      <h1>程式測試及除錯實驗室</h1>
+    </div>
+    <div class="top-tools">
+      <button type="button" class="lang-btn" id="langBtn" lang="en">⇄ English</button>
+      <div class="size-ctl"><span>字體</span><button type="button" id="fontDown" aria-label="縮小字體">A−</button><button type="button" id="fontUp" aria-label="放大字體">A+</button></div>
+    </div>
+  </div>
+  <p class="muted small" id="engineMsg"></p>
+</header>
+<nav class="tabs" role="tablist" aria-label="教學單元">
+  <button type="button" role="tab" data-tab="valid" aria-selected="true"><span class="n">1</span>有效性檢驗</button>
+  <button type="button" role="tab" data-tab="boundary" aria-selected="false"><span class="n">2</span>邊界測試</button>
+  <button type="button" role="tab" data-tab="errors" aria-selected="false"><span class="n">3</span>錯誤類型</button>
+  <button type="button" role="tab" data-tab="trace" aria-selected="false"><span class="n">4</span>追蹤除錯</button>
+  <button type="button" role="tab" data-tab="efficiency" aria-selected="false"><span class="n">5</span>算法效率</button>
+  <button type="button" role="tab" data-tab="quiz" aria-selected="false"><span class="n">6</span>小測</button>
+</nav>
+<main>
+<section class="tab" id="tab-valid" role="tabpanel">
+  <div class="bench-head">
+    <div class="tag">學習目標 1 · 以數據有效性檢驗設計測試數據</div>
+    <h2>陸運會網上報名表：自己寫有效性檢驗</h2>
+    <p class="goal">按下表每個欄位的限制要求，寫出檢查的 Python 程式，再按「核對」。網頁會用一組測試數據（包括正常、邊界及無效數據）執行你的程式，逐一比較輸出。</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">情境</span><span>學校陸運會改用網上報名。每位同學最多報 3 個項目，系統要先檢查輸入，才把資料存入數據庫。</span></div>
+    <div class="tablewrap"><table class="ctable">
+      <thead><tr><th>欄位</th><th>限制要求</th><th>有效性檢驗</th><th>練習</th></tr></thead>
+      <tbody>
+        <tr><td>姓名</td><td>不可留空</td><td>完整性檢查</td><td class="mono">1</td></tr>
+        <tr><td>班別</td><td>只可以是 4A–4D、5A–5D、6A–6D</td><td>固定值檢查</td><td class="mono">2</td></tr>
+        <tr><td>聯絡電話</td><td>剛好 8 個字符</td><td>長度檢查</td><td class="mono">3</td></tr>
+        <tr><td>聯絡電話</td><td>每個字符都是數字</td><td>類型檢查</td><td class="mono">4</td></tr>
+        <tr><td>聯絡電話</td><td>第一個數字是 5、6 或 9（流動電話）</td><td>格式檢查</td><td class="mono">5</td></tr>
+        <tr><td>報名項目數目</td><td>1 至 3 的整數</td><td>範圍檢查</td><td class="mono">6</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="tasks" id="validTasks"></div>
+  <div class="note"><b>有效性檢驗不等於驗證。</b>要求輸入電話號碼兩次並比較，屬於<b>驗證</b>（verification），用來發現輸入時出錯；以上的長度、範圍等檢查才是有效性檢驗。通過所有檢查的電話號碼仍可能是別人的號碼。<span class="cite">〔2025 1A Q6、Q31〕〔2018 1B Q4(c)〕</span></div>
+</section>
+
+<section class="tab" id="tab-boundary" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">學習目標 1 · 辨別邊界案例</div>
+    <h2>體適能測試評級：用測試數據找出錯誤</h2>
+    <p class="goal">下面的程式有一個錯誤。設計測試數據，網頁會用每個數據執行程式，並比較<b>預期輸出</b>與<b>實際輸出</b>。找出錯誤後，直接修改程式，再執行全部測試。</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">情境</span><span>體育科把一分鐘仰臥起坐次數轉換為獎章。次數只可以是 0 至 80 的整數，否則輸出「輸入無效」。</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>次數</th><th>0 – 19</th><th>20 – 29</th><th>30 – 39</th><th>40 – 80</th><th>其他</th></tr></thead>
+      <tbody><tr><td>輸出</td><td>未達標</td><td>銅</td><td>銀</td><td>金</td><td>輸入無效</td></tr></tbody>
+    </table></div>
+    <div class="grid2">
+      <div style="display:grid;gap:10px;min-width:0"><div id="fitEd"></div><ul class="goals" id="fitGoals"></ul></div>
+      <div class="cover">
+        <div class="row" style="justify-content:space-between"><b>測試覆蓋程度</b><span class="score" id="covPct"></span></div>
+        <div class="meter"><i id="covBar"></i></div>
+        <div class="small muted">每條輸出路徑</div>
+        <div class="cover-grid" id="covPaths"></div>
+        <div class="small muted">每個邊界的兩旁</div>
+        <div class="cover-grid" id="covEdges"></div>
+      </div>
+    </div>
+    <div class="numline" id="numline" aria-label="數線"></div>
+    <div class="addrow">
+      <label class="small" for="tdInput" style="font-weight:700">測試數據</label>
+      <input id="tdInput" placeholder="例如 20">
+      <button class="btn primary" id="tdAdd">加入並執行</button>
+      <button class="btn" id="tdRerun">用修改後的程式重新執行全部</button>
+      <button class="btn" id="tdClear">清除全部</button>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>測試數據</th><th>類別</th><th>預期輸出</th><th>實際輸出</th><th>結果</th><th></th></tr></thead>
+      <tbody id="tdBody"></tbody>
+    </table></div>
+    <div class="note"><b>答題時：</b>測試數據的目的要扣緊題目要求，例如「81 用來測試程式能否拒絕超出上限的次數」，不要只寫「測試無效數據」。輸出的值（如「金」）不是測試數據。<span class="cite">〔2024 1B Q5(a)〕〔2019 1A Q28〕〔2023 1B Q3(d)〕</span></div>
+    <div class="note warn">試輸入 <code>三十</code> 或 <code>25.5</code>：<code>int()</code> 不能轉換這些輸入，程式會停止並顯示 <code>ValueError</code>，這是下一個單元的<b>運行時錯誤</b>。</div>
+  </div>
+</section>
+
+<section class="tab" id="tab-errors" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">學習目標 2 · 錯誤類型、原因及除錯</div>
+    <h2>錯誤偵查：分辨、改正、再測試</h2>
+    <p class="goal">判斷錯誤類型時問兩個問題：程式能否開始執行？執行後會否中途停止？每題先點選出錯的一行及錯誤類型，答對後在編輯器改正程式，按「核對」確認改得對。</p>
+  </div>
+  <div class="grid3">
+    <div class="etype t-syntax"><h3><i class="sw"></i>語法錯誤</h3>
+      <dl><dt>何時</dt><dd>翻譯程式碼時</dd><dt>結果</dt><dd>程式不能執行</dd><dt>原因</dt><dd>違反程式語言的規則，如漏了冒號、括號不對稱、拼錯關鍵字</dd><dt>除錯</dt><dd>按錯誤訊息的行號改正</dd></dl></div>
+    <div class="etype t-runtime"><h3><i class="sw"></i>運行時錯誤</h3>
+      <dl><dt>何時</dt><dd>程式執行期間</dd><dt>結果</dt><dd>程式中途停止（崩潰）</dd><dt>原因</dt><dd>執行了不能完成的操作，如除以零、索引超出範圍、輸入不能轉換為數字</dd><dt>除錯</dt><dd>看錯誤訊息的行號；加入有效性檢驗</dd></dl></div>
+    <div class="etype t-logic"><h3><i class="sw"></i>邏輯錯誤</h3>
+      <dl><dt>何時</dt><dd>程式能完成執行</dd><dt>結果</dt><dd>輸出不正確，或陷入無限循環</dd><dt>原因</dt><dd>算法設計錯誤，如條件、初始值或循環範圍錯誤</dd><dt>除錯</dt><dd>比較預期及實際輸出；用追蹤表逐行檢查</dd></dl></div>
+  </div>
+  <div class="tasks" id="errTasks"></div>
+  <p class="small muted">公開試亦有這類題目：指出程式段第幾行有語法、邏輯或運行時錯誤，題目會並列三種語言版本。〔2026 1A Q37–38〕</p>
+</section>
+
+<section class="tab" id="tab-trace" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">學習目標 2 · 除錯</div>
+    <h2>步數挑戰：用追蹤表找出邏輯錯誤</h2>
+    <p class="goal">邏輯錯誤不會有錯誤訊息。先寫出<b>預期輸出</b>，再逐行執行並記錄變量的值（追蹤表），找出實際值與預期不同的地方，然後在下面改正程式。</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">情境</span><span>班主任鼓勵同學每日行 10000 步或以上。志明記錄了一星期的步數，想計算達標日數。11000、10000、12000、10000、15000 都達標，<b>預期輸出是 5</b>。</span></div>
+    <div class="stepno">第一步：追蹤原本的程式</div>
+    <div class="dbg">
+      <div style="display:grid;gap:10px;min-width:0">
+        <pre class="code" id="dbgCode"></pre>
+        <div class="row">
+          <button class="btn" id="dbgReset">重新開始</button>
+          <button class="btn" id="dbgPrev">上一步</button>
+          <button class="btn primary" id="dbgStep">下一步</button>
+          <button class="btn" id="dbgEnd">執行至結束</button>
+          <span class="small muted" id="dbgCount"></span>
+        </div>
+        <div><span class="lab">輸出</span><pre class="console" id="dbgOut"></pre></div>
+      </div>
+      <div style="display:grid;gap:12px;align-content:start;min-width:0">
+        <div class="vars" id="dbgVars"></div>
+        <div class="tablewrap trace"><table>
+          <thead><tr><th>行</th><th>i</th><th>steps[i]</th><th>條件</th><th>count</th></tr></thead>
+          <tbody id="dbgTrace"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="note">追蹤到第幾行時，發現與預期不同？想一想：第一日的 11000 有沒有被檢查？10000 步算不算達標？</div>
+  </div>
+  <div class="card">
+    <div class="stepno">第二步：改正程式並測試</div>
+    <div class="req"><b class="t">要求</b>修改程式，令它對任何一星期的步數都輸出正確的達標日數（10000 步或以上算達標）。核對時會換上其他步數數據再執行。只核對<b>最後一行</b>輸出，所以你可以加入 <code>print(i, steps[i], count)</code> 一類語句追蹤變量。</div>
+    <div id="traceTask" style="display:grid;gap:14px"></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-efficiency" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">學習目標 3 · 從執行步數及資源運用比較算法</div>
+    <h2>收功課：比較兩個算法的執行步數</h2>
+    <p class="goal">兩個算法輸出相同，不代表效率相同。比較時要數清楚某句語句的<b>執行次數</b>，並說明在甚麼數據下才有分別。</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">情境</span><span>科長要檢查 10 位同學是否全部已交功課。點擊格子切換「已交」或「未交」，先預測比較次數，再按「顯示」。</span></div>
+    <div class="hwrow" id="hwRow"></div>
+    <div class="grid2">
+      <div style="display:grid;gap:6px;min-width:0"><b>ALG1：for 循環檢查每一份</b><pre class="code" id="alg1"></pre></div>
+      <div style="display:grid;gap:6px;min-width:0"><b>ALG2：while 循環，發現未交即停止</b><pre class="code" id="alg2"></pre></div>
+    </div>
+    <div class="predict">
+      <label for="pr1" class="small"><b>預測</b>　ALG1 比較次數</label><input id="pr1" inputmode="numeric">
+      <label for="pr2" class="small">ALG2 比較次數</label><input id="pr2" inputmode="numeric">
+      <button class="btn primary" id="prShow">顯示</button>
+      <span class="small" id="prFb"></span>
+    </div>
+    <div id="hwReveal" hidden style="display:grid;gap:10px">
+      <div style="display:grid;gap:6px">
+        <div class="small muted">每格代表 <code>hw[i] == False</code> 被執行一次</div>
+        <div class="scan" id="scan1"></div>
+        <div class="scan" id="scan2"></div>
+      </div>
+      <div class="counts">
+        <div class="count"><div class="small muted">ALG1 比較次數</div><div class="n" id="c1"></div></div>
+        <div class="count"><div class="small muted">ALG2 比較次數</div><div class="n" id="c2"></div></div>
+        <div class="count"><div class="small muted">兩者輸出 all_done</div><div class="n" id="c3" style="font-size:1.3rem"></div></div>
+      </div>
+    </div>
+    <div class="note"><b>答題時：</b>寫「ALG2 較有效率，因為一發現未交的功課便停止，<code>hw[i] == False</code> 的執行次數較少」。只寫「因為用 while 循環」不會得分。如全部已交，兩者都要比較 10 次。<span class="cite">〔2022 1B Q5(c)(ii)〕〔改編自 2024 1A Q28〕</span></div>
+  </div>
+  <div class="card">
+    <div class="stepno">動手改寫</div>
+    <div class="req"><b class="t">要求</b>以下 ALG1 加入了計數器 <code>checks</code>，記錄比較了多少次。把它改寫為 while 循環，令程式一發現未交的功課便停止，輸出不變，但 <code>checks</code> 減少。不可使用 <code>break</code>。核對時會換上其他 <code>hw</code> 列表。</div>
+    <div id="effTask" style="display:grid;gap:14px"></div>
+  </div>
+  <div class="card">
+    <div class="bench-head">
+      <div class="tag">學習目標 3 · 資源運用</div>
+      <h3>儲錢計劃：執行步數與記憶體的取捨</h3>
+    </div>
+    <div class="scene"><span class="pill">情境</span><span>小珊第 1 日存 $1，第 2 日存 $2……第 N 日存 $N。三個方法都能計算 N 日後共存多少錢。拉動滑桿改變 N。</span></div>
+    <div class="slider"><label for="nSlider"><b>N = <span id="nVal" class="mono"></span> 日</b>　總額 = $<span id="nSum" class="mono"></span></label><input type="range" id="nSlider" min="1" max="1000" value="30"></div>
+    <div class="grid3">
+      <div style="display:grid;gap:6px;min-width:0"><b>方法甲：循環累加</b><pre class="code" id="mA"></pre></div>
+      <div style="display:grid;gap:6px;min-width:0"><b>方法乙：數學公式</b><pre class="code" id="mB"></pre></div>
+      <div style="display:grid;gap:6px;min-width:0"><b>方法丙：先存入列表再加</b><pre class="code" id="mC"></pre></div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="note">方法乙的步數不會隨 N 增加，最有效率。方法丙的結果相同，但要多用一個有 N 個項目的列表，佔用較多<b>記憶體</b>，步數亦較多。若算法本身步數多，單靠增加 RAM 不能明顯縮短執行時間，因為瓶頸在執行步數。<span class="cite">〔改編自 2024 1A Q28〕</span></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-quiz" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">小測</div>
+    <h2>六題多項選擇題</h2>
+    <p class="goal">選一個答案後會顯示每個選項對錯的原因。</p>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><span class="small muted">情境為原創，題型參考公開試</span><span class="score" id="qzScore"></span></div>
+    <div id="qzList" style="display:grid;gap:26px"></div>
+    <button class="btn" id="qzReset" style="justify-self:start">重新作答</button>
+  </div>
+</section>
+</main>
+<footer>
+  <p><b>課程範圍說明：</b>本頁按課程指引必修 D(d) 編寫。<code>isdigit()</code>、<code>try-except</code> 屬 Python 延伸內容，不作必答要求。樁（stub）、旗標、捨入及溢出等數值誤差列於選修丙，本頁不涉及。網頁內的 Python 由 Skulpt 在瀏覽器執行，錯誤訊息以英文顯示。</p>
+  <p>學習目標出自《資訊及通訊科技課程及評估指引》必修 D(d)；術語跟隨教科書《香港中學文憑 易學 ICT》必修 D 第 7–8 章。</p>
+</footer>
+</template>
+
+<!-- ======================= English ======================= -->
+<template id="tpl-en">
+<header class="top">
+  <div class="top-row">
+    <div>
+      <div class="eyebrow">Compulsory D(d)　Computational Thinking and Programming · Python</div>
+      <h1>Program Testing and Debugging Lab</h1>
+    </div>
+    <div class="top-tools">
+      <button type="button" class="lang-btn" id="langBtn" lang="zh-Hant-HK">⇄ 中文</button>
+      <div class="size-ctl"><span>Text size</span><button type="button" id="fontDown" aria-label="Smaller text">A−</button><button type="button" id="fontUp" aria-label="Larger text">A+</button></div>
+    </div>
+  </div>
+  <p class="muted small" id="engineMsg"></p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Lesson units">
+  <button type="button" role="tab" data-tab="valid" aria-selected="true"><span class="n">1</span>Validation</button>
+  <button type="button" role="tab" data-tab="boundary" aria-selected="false"><span class="n">2</span>Boundary testing</button>
+  <button type="button" role="tab" data-tab="errors" aria-selected="false"><span class="n">3</span>Types of error</button>
+  <button type="button" role="tab" data-tab="trace" aria-selected="false"><span class="n">4</span>Tracing and debugging</button>
+  <button type="button" role="tab" data-tab="efficiency" aria-selected="false"><span class="n">5</span>Algorithm efficiency</button>
+  <button type="button" role="tab" data-tab="quiz" aria-selected="false"><span class="n">6</span>Quiz</button>
+</nav>
+<main>
+<section class="tab" id="tab-valid" role="tabpanel">
+  <div class="bench-head">
+    <div class="tag">Learning objective 1 · Design test data with data validation 數據有效性檢驗</div>
+    <h2>Sports Day online entry form: write your own validation</h2>
+    <p class="goal">For each field in the table, write a Python program that checks its requirement, then press <b>Check</b>. The page runs your program with a set of test data (normal, boundary and invalid data) and compares each output.</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">Scenario</span><span>The school's Sports Day now takes entries online. Each student may enter at most 3 events. The system must check the input before storing it in the database.</span></div>
+    <div class="tablewrap"><table class="ctable">
+      <thead><tr><th>Field</th><th>Requirement</th><th>Validation check</th><th>Task</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td>Must not be empty</td><td>Completeness check 完整性檢查</td><td class="mono">1</td></tr>
+        <tr><td>Class</td><td>Only 4A–4D, 5A–5D, 6A–6D</td><td>Fixed value check 固定值檢查</td><td class="mono">2</td></tr>
+        <tr><td>Phone number</td><td>Exactly 8 characters</td><td>Length check 長度檢查</td><td class="mono">3</td></tr>
+        <tr><td>Phone number</td><td>Every character is a digit</td><td>Type check 類型檢查</td><td class="mono">4</td></tr>
+        <tr><td>Phone number</td><td>First digit is 5, 6 or 9 (mobile number)</td><td>Format check 格式檢查</td><td class="mono">5</td></tr>
+        <tr><td>Number of events</td><td>An integer from 1 to 3</td><td>Range check 範圍檢查</td><td class="mono">6</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="tasks" id="validTasks"></div>
+  <div class="note"><b>Validation is not verification.</b> Asking the user to enter the phone number twice and comparing them is <b>verification</b> 驗證, which detects mistakes made while typing. The length and range checks above are validation 有效性檢驗. A phone number that passes every check may still belong to someone else. <span class="cite">[2025 1A Q6, Q31] [2018 1B Q4(c)]</span></div>
+</section>
+
+<section class="tab" id="tab-boundary" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">Learning objective 1 · Identify boundary cases 邊界案例</div>
+    <h2>Fitness test awards: use test data to find the error</h2>
+    <p class="goal">The program below contains one error. Design test data: the page runs the program with each value and compares the <b>expected output</b> with the <b>actual output</b>. When you find the error, edit the program and run all the tests again.</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">Scenario</span><span>The PE department turns the number of sit-ups in one minute into an award. The number must be an integer from 0 to 80; otherwise the program outputs "Invalid input".</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Sit-ups</th><th>0 – 19</th><th>20 – 29</th><th>30 – 39</th><th>40 – 80</th><th>Others</th></tr></thead>
+      <tbody><tr><td>Output</td><td>Not yet</td><td>Bronze</td><td>Silver</td><td>Gold</td><td>Invalid input</td></tr></tbody>
+    </table></div>
+    <div class="grid2">
+      <div style="display:grid;gap:10px;min-width:0"><div id="fitEd"></div><ul class="goals" id="fitGoals"></ul></div>
+      <div class="cover">
+        <div class="row" style="justify-content:space-between"><b>Test coverage</b><span class="score" id="covPct"></span></div>
+        <div class="meter"><i id="covBar"></i></div>
+        <div class="small muted">Each output path</div>
+        <div class="cover-grid" id="covPaths"></div>
+        <div class="small muted">Both sides of each boundary</div>
+        <div class="cover-grid" id="covEdges"></div>
+      </div>
+    </div>
+    <div class="numline" id="numline" aria-label="Number line"></div>
+    <div class="addrow">
+      <label class="small" for="tdInput" style="font-weight:700">Test data</label>
+      <input id="tdInput" placeholder="e.g. 20">
+      <button class="btn primary" id="tdAdd">Add and run</button>
+      <button class="btn" id="tdRerun">Re-run all with the edited program</button>
+      <button class="btn" id="tdClear">Clear all</button>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Test data</th><th>Type</th><th>Expected output</th><th>Actual output</th><th>Result</th><th></th></tr></thead>
+      <tbody id="tdBody"></tbody>
+    </table></div>
+    <div class="note"><b>In the exam:</b> link the purpose of each test value to the requirement, e.g. "81 tests whether the program rejects a number above the upper limit". Do not just write "to test invalid data". An output value such as "Gold" is not test data. <span class="cite">[2024 1B Q5(a)] [2019 1A Q28] [2023 1B Q3(d)]</span></div>
+    <div class="note warn">Try entering <code>thirty</code> or <code>25.5</code>: <code>int()</code> cannot convert them, so the program stops with <code>ValueError</code>. This is a <b>run-time error</b>, covered in the next unit.</div>
+  </div>
+</section>
+
+<section class="tab" id="tab-errors" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">Learning objective 2 · Types of error, causes and debugging</div>
+    <h2>Error detective: identify, fix, test again</h2>
+    <p class="goal">Ask two questions to decide the type of error: Can the program start running? Does it stop part way? For each task, click the line with the error and choose its type. When you get it right, fix the program in the editor and press <b>Check</b>.</p>
+  </div>
+  <div class="grid3">
+    <div class="etype t-syntax"><h3><i class="sw"></i>Syntax error 語法錯誤</h3>
+      <dl><dt>When</dt><dd>While the code is translated</dd><dt>Result</dt><dd>The program cannot run</dd><dt>Cause</dt><dd>Breaking the rules of the language, e.g. a missing colon, unmatched brackets, a misspelt keyword</dd><dt>Debug</dt><dd>Use the line number in the error message</dd></dl></div>
+    <div class="etype t-runtime"><h3><i class="sw"></i>Run-time error 運行時錯誤</h3>
+      <dl><dt>When</dt><dd>While the program is running</dd><dt>Result</dt><dd>The program stops (crashes)</dd><dt>Cause</dt><dd>An operation that cannot be done, e.g. division by zero, index out of range, input that cannot become a number</dd><dt>Debug</dt><dd>Use the line number; add validation</dd></dl></div>
+    <div class="etype t-logic"><h3><i class="sw"></i>Logic error 邏輯錯誤</h3>
+      <dl><dt>When</dt><dd>The program finishes running</dd><dt>Result</dt><dd>Wrong output, or an infinite loop</dd><dt>Cause</dt><dd>A mistake in the algorithm, e.g. a wrong condition, initial value or loop range</dd><dt>Debug</dt><dd>Compare expected and actual output; use a trace table</dd></dl></div>
+  </div>
+  <div class="tasks" id="errTasks"></div>
+  <p class="small muted">The exam has this type of question too: state which line of a program segment has a syntax, logic or run-time error, with versions in three languages side by side. [2026 1A Q37–38]</p>
+</section>
+
+<section class="tab" id="tab-trace" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">Learning objective 2 · Debugging</div>
+    <h2>Step challenge: find a logic error with a trace table</h2>
+    <p class="goal">A logic error gives no error message. Write down the <b>expected output</b> first, then run the program line by line and record the values of the variables (a trace table 追蹤表). Find where the actual values differ from what you expect, then fix the program below.</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">Scenario</span><span>The class teacher encourages everyone to walk 10000 steps or more each day. Peter recorded his steps for a week and wants to count the days he reached the target. 11000, 10000, 12000, 10000 and 15000 all reach it, so the <b>expected output is 5</b>.</span></div>
+    <div class="stepno">STEP 1: TRACE THE ORIGINAL PROGRAM</div>
+    <div class="dbg">
+      <div style="display:grid;gap:10px;min-width:0">
+        <pre class="code" id="dbgCode"></pre>
+        <div class="row">
+          <button class="btn" id="dbgReset">Restart</button>
+          <button class="btn" id="dbgPrev">Back</button>
+          <button class="btn primary" id="dbgStep">Next</button>
+          <button class="btn" id="dbgEnd">Run to end</button>
+          <span class="small muted" id="dbgCount"></span>
+        </div>
+        <div><span class="lab">OUTPUT</span><pre class="console" id="dbgOut"></pre></div>
+      </div>
+      <div style="display:grid;gap:12px;align-content:start;min-width:0">
+        <div class="vars" id="dbgVars"></div>
+        <div class="tablewrap trace"><table>
+          <thead><tr><th>Line</th><th>i</th><th>steps[i]</th><th>Condition</th><th>count</th></tr></thead>
+          <tbody id="dbgTrace"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="note">At which line do the values first differ from what you expect? Think: is Day 1 (11000) ever checked? Does 10000 steps count as reaching the target?</div>
+  </div>
+  <div class="card">
+    <div class="stepno">STEP 2: FIX THE PROGRAM AND TEST IT</div>
+    <div class="req"><b class="t">Task</b>Edit the program so that it outputs the correct number of days for any week (10000 steps or more reaches the target). Checking swaps in other step data. Only the <b>last line</b> of output is checked, so you may add statements such as <code>print(i, steps[i], count)</code> to trace variables.</div>
+    <div id="traceTask" style="display:grid;gap:14px"></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-efficiency" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">Learning objective 3 · Compare algorithms by number of steps and use of resources</div>
+    <h2>Collecting homework: compare the steps of two algorithms</h2>
+    <p class="goal">Two algorithms with the same output are not necessarily equally efficient. Count how many times a statement is <b>executed</b>, and state for which data the difference appears.</p>
+  </div>
+  <div class="card">
+    <div class="scene"><span class="pill">Scenario</span><span>The subject monitor checks whether all 10 students have handed in their homework. Click a box to switch between "In" and "Missing". Predict the number of comparisons first, then press <b>Show</b>.</span></div>
+    <div class="hwrow" id="hwRow"></div>
+    <div class="grid2">
+      <div style="display:grid;gap:6px;min-width:0"><b>ALG1: a for loop checks every copy</b><pre class="code" id="alg1"></pre></div>
+      <div style="display:grid;gap:6px;min-width:0"><b>ALG2: a while loop stops at the first missing copy</b><pre class="code" id="alg2"></pre></div>
+    </div>
+    <div class="predict">
+      <label for="pr1" class="small"><b>Predict</b>　ALG1 comparisons</label><input id="pr1" inputmode="numeric">
+      <label for="pr2" class="small">ALG2 comparisons</label><input id="pr2" inputmode="numeric">
+      <button class="btn primary" id="prShow">Show</button>
+      <span class="small" id="prFb"></span>
+    </div>
+    <div id="hwReveal" hidden style="display:grid;gap:10px">
+      <div style="display:grid;gap:6px">
+        <div class="small muted">Each bar is one execution of <code>hw[i] == False</code></div>
+        <div class="scan" id="scan1"></div>
+        <div class="scan" id="scan2"></div>
+      </div>
+      <div class="counts">
+        <div class="count"><div class="small muted">ALG1 comparisons</div><div class="n" id="c1"></div></div>
+        <div class="count"><div class="small muted">ALG2 comparisons</div><div class="n" id="c2"></div></div>
+        <div class="count"><div class="small muted">all_done output by both</div><div class="n" id="c3" style="font-size:1.3rem"></div></div>
+      </div>
+    </div>
+    <div class="note"><b>In the exam:</b> write "ALG2 is more efficient because it stops as soon as it finds a missing copy, so <code>hw[i] == False</code> is executed fewer times". Writing only "because it uses a while loop" scores no marks. If every copy is in, both make 10 comparisons. <span class="cite">[2022 1B Q5(c)(ii)] [adapted from 2024 1A Q28]</span></div>
+  </div>
+  <div class="card">
+    <div class="stepno">REWRITE IT YOURSELF</div>
+    <div class="req"><b class="t">Task</b>ALG1 below has a counter <code>checks</code> that records the number of comparisons. Rewrite it with a while loop so that it stops as soon as it finds a missing copy. The output stays the same but <code>checks</code> becomes smaller. Do not use <code>break</code>. Checking swaps in other <code>hw</code> lists.</div>
+    <div id="effTask" style="display:grid;gap:14px"></div>
+  </div>
+  <div class="card">
+    <div class="bench-head">
+      <div class="tag">Learning objective 3 · Use of resources</div>
+      <h3>Savings plan: steps versus memory</h3>
+    </div>
+    <div class="scene"><span class="pill">Scenario</span><span>Mary saves $1 on day 1, $2 on day 2, … and $N on day N. All three methods calculate the total after N days. Drag the slider to change N.</span></div>
+    <div class="slider"><label for="nSlider"><b>N = <span id="nVal" class="mono"></span> days</b>　Total = $<span id="nSum" class="mono"></span></label><input type="range" id="nSlider" min="1" max="1000" value="30"></div>
+    <div class="grid3">
+      <div style="display:grid;gap:6px;min-width:0"><b>Method A: add in a loop</b><pre class="code" id="mA"></pre></div>
+      <div style="display:grid;gap:6px;min-width:0"><b>Method B: use a formula</b><pre class="code" id="mB"></pre></div>
+      <div style="display:grid;gap:6px;min-width:0"><b>Method C: store in a list, then add</b><pre class="code" id="mC"></pre></div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="note">The number of steps in Method B does not grow with N, so it is the most efficient. Method C gives the same result but needs an extra list of N items, which uses more <b>memory</b>, and it also takes more steps. If an algorithm takes many steps, adding more RAM alone will not shorten the running time much, because the bottleneck is the number of steps. <span class="cite">[adapted from 2024 1A Q28]</span></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-quiz" role="tabpanel" hidden>
+  <div class="bench-head">
+    <div class="tag">Quiz</div>
+    <h2>Six multiple-choice questions</h2>
+    <p class="goal">After you choose an answer, the reason each option is right or wrong is shown.</p>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><span class="small muted">Original scenarios; question types follow the HKDSE exam</span><span class="score" id="qzScore"></span></div>
+    <div id="qzList" style="display:grid;gap:26px"></div>
+    <button class="btn" id="qzReset" style="justify-self:start">Try again</button>
+  </div>
+</section>
+</main>
+<footer>
+  <p><b>Syllabus scope:</b> this page follows Compulsory D(d) of the Curriculum and Assessment Guide. <code>isdigit()</code> and <code>try-except</code> are Python extensions and are not required answers. Stubs, flags and numerical errors such as rounding and overflow are listed under Elective D and are not covered here. Python on this page runs in the browser with Skulpt.</p>
+  <p>Learning objectives from the ICT Curriculum and Assessment Guide, Compulsory D(d). Chinese terms follow the textbook 《香港中學文憑 易學 ICT》 Compulsory D, Chapters 7–8.</p>
+</footer>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const store={get(k){try{return localStorage.getItem("ptd-"+k)}catch(e){return null}},set(k,v){try{localStorage.setItem("ptd-"+k,v)}catch(e){}}};
+const engineOK=!!(window.Sk&&Sk.builtinFiles);
+const SIZES=[14,15,16,18,20,22];let sizeIdx=SIZES.indexOf(+store.get("size"));if(sizeIdx<0)sizeIdx=2;
+
+/* ---------- highlighter ---------- */
+function hl(line){
+  let out="",i=0;
+  const KW=/^(for|in|if|elif|else|while|and|or|not|print|range|len|int|input|True|False|append)\b/;
+  while(i<line.length){
+    const r=line.slice(i);let m;
+    if(r[0]==="#"){out+=`<span class="cm">${esc(r)}</span>`;break}
+    if(r[0]==='"'){const j=line.indexOf('"',i+1);const e=j<0?line.length:j+1;out+=`<span class="st">${esc(line.slice(i,e))}</span>`;i=e;continue}
+    if((m=r.match(KW))&&(i===0||!/[\w.]/.test(line[i-1])||m[1]==="append")){out+=`<span class="kw">${m[1]}</span>`;i+=m[1].length;continue}
+    if((m=r.match(/^\d+/))&&(i===0||!/\w/.test(line[i-1]))){out+=`<span class="nu">${m[0]}</span>`;i+=m[0].length;continue}
+    out+=esc(r[0]);i++;
+  }
+  return out;
+}
+function renderCode(el,lines){el.innerHTML=lines.map((l,k)=>`<span class="ln" data-n="${k+1}">${hl(l)||" "}</span>`).join("");}
+const codeHTML=src=>`<pre class="code">${src.split("\n").map((l,k)=>`<span class="ln" data-n="${k+1}">${hl(l)||" "}</span>`).join("")}</pre>`;
+
+/* ---------- Python runner (Skulpt) ---------- */
+let queue=Promise.resolve();
+function runPy(code,inputs){const job=queue.then(()=>runPyNow(code,inputs));queue=job.catch(()=>{});return job}
+async function runPyNow(code,inputs){
+  if(!engineOK)return{out:"",err:{tp:"EngineError",kind:"engine",msg:"Python engine not loaded",line:null}};
+  let out="";const q=(inputs||[]).map(String);
+  Sk.configure({
+    output:t=>{if(out.length<6000)out+=t},
+    read:x=>{const f=Sk.builtinFiles.files[x];if(f===undefined)throw"File not found: '"+x+"'";return f},
+    inputfun:()=>q.length?q.shift():"",
+    inputfunTakesPrompt:true,execLimit:1500,yieldLimit:100,__future__:Sk.python3
+  });
+  try{
+    await Sk.misceval.asyncToPromise(()=>Sk.importMainWithBody("<stdin>",false,code,true));
+    return{out};
+  }catch(e){
+    let tp=e&&e.tp$name?e.tp$name:"Error",line=null,msg="";
+    try{line=e.traceback&&e.traceback[0]?e.traceback[0].lineno:null}catch(_){}
+    try{msg=e.args.v.map(a=>Sk.ffi.remapToJs(a)).join(" ")}catch(_){msg=String(e)}
+    const kind=/SyntaxError|IndentationError|TokenError|TabError/.test(tp)?"syntax":tp==="TimeLimitError"?"timeout":"runtime";
+    return{out,err:{tp,kind,msg,line}};
+  }
+}
+const norm=s=>s.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+$/,"")).join("\n").replace(/\n+$/,"");
+
+/* ================= start(lang): render template + build everything ================= */
+function start(LANG){
+const zh=LANG==="zh",L=(a,b)=>zh?a:b;
+store.set("lang",LANG);
+document.documentElement.lang=zh?"zh-Hant-HK":"en";
+document.title=L("程式測試及除錯實驗室","Program Testing and Debugging Lab");
+$("#app").innerHTML=document.getElementById("tpl-"+LANG).innerHTML;
+$("#langBtn").onclick=()=>start(zh?"en":"zh");
+
+/* tabs + font size */
+const TABS=[...document.querySelectorAll("nav.tabs button")];
+function showTab(name){
+  if(!document.getElementById("tab-"+name))name="valid";
+  TABS.forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===name)));
+  document.querySelectorAll("section.tab").forEach(s=>s.hidden=s.id!=="tab-"+name);
+  store.set("tab",name);
+  document.querySelectorAll("textarea.ed").forEach(t=>t.dispatchEvent(new Event("fit")));
+}
+TABS.forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tab);window.scrollTo({top:0})}));
+function applySize(){document.documentElement.style.fontSize=SIZES[sizeIdx]+"px";store.set("size",SIZES[sizeIdx]);document.querySelectorAll("textarea.ed").forEach(t=>t.dispatchEvent(new Event("fit")))}
+$("#fontDown").onclick=()=>{sizeIdx=Math.max(0,sizeIdx-1);applySize()};
+$("#fontUp").onclick=()=>{sizeIdx=Math.min(SIZES.length-1,sizeIdx+1);applySize()};
+applySize();
+$("#engineMsg").innerHTML=engineOK?L("Python 執行環境已準備好：所有編輯器都可以直接修改及執行。","Python is ready: every editor on this page can be edited and run."):`<span style="color:var(--bad)">${L("未能載入 Python 執行環境，請檢查網絡後重新整理頁面。示範部分仍可使用。","The Python engine could not be loaded. Check the network and reload the page. The demonstrations still work.")}</span>`;
+
+/* error display */
+const KIND={syntax:L("語法錯誤","Syntax error"),runtime:L("運行時錯誤","Run-time error"),timeout:L("邏輯錯誤","Logic error"),engine:L("未能執行","Not run")};
+function errText(err){
+  if(err.kind==="engine")return L("Python 執行環境未載入",err.msg);
+  const ln=err.line?L("（第 "+err.line+" 行）"," (line "+err.line+")"):"";
+  if(err.kind==="timeout")return L("執行超過時限：可能是無限循環","Time limit exceeded: probably an infinite loop")+ln;
+  return`${err.tp}${ln}${L("：",": ")}${err.msg}`;
+}
+function errHTML(err){const k=err.kind==="timeout"?"logic":err.kind==="engine"?"runtime":err.kind;return`<span class="etag ${k}">${KIND[err.kind]}</span> ${esc(errText(err))}`}
+const NOOUT=`<span class="muted">${L("（沒有輸出）","(no output)")}</span>`;
+const showOut=s=>s===""?NOOUT:esc(s);
+
+/* code editor */
+function makeEditor(host,code,opts={}){
+  const title=opts.title||L("Python 程式（可修改）","Python program (editable)");
+  host.innerHTML=`<div class="edbox"><div class="edbar"><span>${esc(title)}</span><button type="button" data-reset>${L("還原","Reset")}</button></div><div class="edgrid"><div class="gutter"></div><textarea class="ed" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="${esc(title)}"></textarea></div></div>`;
+  const ta=host.querySelector("textarea"),gut=host.querySelector(".gutter");let errLine=null;
+  const fit=()=>{const n=ta.value.split("\n").length;gut.innerHTML=Array.from({length:n},(_,k)=>k+1===errLine?`<span class="e">${k+1}</span>`:String(k+1)).join("\n");ta.style.height="auto";ta.style.height=ta.scrollHeight+"px";};
+  ta.value=code;
+  ta.addEventListener("fit",fit);
+  ta.addEventListener("input",()=>{errLine=null;fit();opts.onChange&&opts.onChange()});
+  ta.addEventListener("keydown",e=>{
+    if(e.key==="Tab"&&!e.shiftKey){e.preventDefault();ta.setRangeText("    ",ta.selectionStart,ta.selectionEnd,"end");ta.dispatchEvent(new Event("input"))}
+    else if(e.key==="Enter"&&!e.isComposing){
+      const s=ta.selectionStart,before=ta.value.slice(0,s),cur=before.slice(before.lastIndexOf("\n")+1);
+      let ind=(cur.match(/^ */)||[""])[0];if(/:\s*(#.*)?$/.test(cur))ind+="    ";
+      e.preventDefault();ta.setRangeText("\n"+ind,s,ta.selectionEnd,"end");ta.dispatchEvent(new Event("input"));
+    }
+  });
+  host.querySelector("[data-reset]").onclick=()=>{ta.value=code;errLine=null;fit();opts.onChange&&opts.onChange()};
+  requestAnimationFrame(fit);fit();
+  return{get:()=>ta.value,mark:l=>{errLine=l;fit()}};
+}
+
+/* fill-in-the-blank editor: "____" in the template becomes an input box */
+function makeBlank(host,tpl,onEnter){
+  const title=L("Python 程式（填寫空格）","Python program (fill in the blank)");
+  const parts=tpl.split("____");
+  host.innerHTML=`<div class="edbox"><div class="edbar"><span>${esc(title)}</span><button type="button" data-reset>${L("還原","Reset")}</button></div><pre class="code fill"></pre></div>`;
+  const pre=host.querySelector("pre");let n=0;
+  pre.innerHTML=tpl.split("\n").map((l,k)=>`<span class="ln" data-n="${k+1}">${l.split("____").map(hl).join("\u0000")||" "}</span>`).join("").replace(/\u0000/g,()=>`<input class="blank" data-b="${n++}" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="${L("空格","Blank")} ${n}">`);
+  const boxes=[...pre.querySelectorAll("input.blank")];
+  const size=b=>{b.style.width=Math.max(12,b.value.length+2)+"ch"};
+  boxes.forEach(b=>{size(b);b.addEventListener("input",()=>{size(b);mark(null)});b.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing){e.preventDefault();onEnter&&onEnter()}})});
+  function mark(l){pre.querySelectorAll(".ln").forEach(x=>x.classList.toggle("errl",+x.dataset.n===l))}
+  host.querySelector("[data-reset]").onclick=()=>{boxes.forEach(b=>{b.value="";size(b)});mark(null)};
+  return{get:()=>parts.reduce((a,x,k)=>a+(k?boxes[k-1].value:"")+x,""),mark};
+}
+
+/* task runner: requirement + editor + tests */
+function makeTask(host,t,onPass){
+  host.innerHTML=`${t.req?`<div class="req"><b class="t">${L("要求","Task")}</b>${t.req}</div>`:""}<div data-ed></div>
+  <div class="row"><button class="btn primary" data-run>${L("核對","Check")}</button><span class="small muted">${t.lastLine?L("只核對最後一行輸出。","Only the last line of output is checked."):""}</span></div>
+  <div data-res style="display:grid;gap:10px"></div><div data-hint></div>
+  <div class="own"><div><label class="lab">${L("自行測試：輸入（每行一個 input()）","TRY IT: INPUT (ONE LINE PER input())")}</label><textarea data-in spellcheck="false" placeholder="${esc(t.ownPh||L("每行一個輸入值","One input value per line"))}">${esc(t.ownDefault||"")}</textarea><div class="row" style="margin-top:6px"><button class="btn" data-own>${L("執行一次","Run once")}</button></div></div><div><label class="lab">${L("輸出","OUTPUT")}</label><pre class="console" data-con></pre></div></div>`;
+  const ed=t.blank?makeBlank(host.querySelector("[data-ed]"),t.blank,()=>host.querySelector("[data-run]").click()):makeEditor(host.querySelector("[data-ed]"),t.starter);
+  const res=host.querySelector("[data-res]"),hint=host.querySelector("[data-hint]");
+  host.querySelector("[data-own]").onclick=async()=>{
+    const con=host.querySelector("[data-con]");con.textContent=L("執行中……","Running…");
+    const raw=host.querySelector("[data-in]").value;const ins=raw===""?[]:raw.split("\n");
+    const r=await runPy(ed.get(),ins);ed.mark(r.err?r.err.line:null);
+    con.innerHTML=((r.out?esc(r.out):"")+(r.err?`<span class="err">${esc(errText(r.err))}</span>`:""))||NOOUT;
+  };
+  host.querySelector("[data-run]").onclick=async()=>{
+    res.innerHTML=`<p class="loading">${L("執行測試中……","Running tests…")}</p>`;hint.innerHTML="";
+    const code=ed.get();
+    if(t.forbid){for(const[re,msg]of t.forbid){if(re.test(code)){res.innerHTML=`<p class="verdict no">${msg}</p>`;return}}}
+    const rows=[];let pass=0,syntax=null;
+    for(const c of t.tests){
+      let src=code;
+      if(c.sub){if(!t.subRe.test(src)){rows.push({c,skip:true});continue}src=src.replace(t.subRe,c.sub)}
+      const r=await runPy(src,c.inputs||[]);
+      if(r.err&&r.err.kind==="syntax"){syntax=r.err;break}
+      const actual=norm(r.out),cmp=t.lastLine?(actual.split("\n").pop()||""):actual;
+      const ok=!r.err&&cmp===norm(c.expect);if(ok)pass++;
+      rows.push({c,r,actual,ok});
+    }
+    if(syntax){ed.mark(syntax.line);res.innerHTML=`<p class="verdict no">${errHTML(syntax)}<small>${L("有語法錯誤時程式完全不能執行，所以未能進行任何測試。按行號找出問題並改正。","With a syntax error the program cannot run at all, so no test was run. Use the line number to find and fix the problem.")}</small></p>`;return}
+    const firstErr=rows.find(x=>x.r&&x.r.err);ed.mark(firstErr?firstErr.r.err.line:null);
+    const all=pass===t.tests.length;
+    res.innerHTML=`<p class="verdict ${all?"ok":"no"}">${all?L("全部測試通過","All tests passed"):L("通過 "+pass+" / "+t.tests.length+" 個測試","Passed "+pass+" of "+t.tests.length+(t.tests.length===1?" test":" tests"))}</p>
+    <div class="tablewrap"><table><thead><tr><th>${L("測試","Test")}</th><th>${L("輸入","Input")}</th><th>${L("預期輸出","Expected output")}</th><th>${L("你的輸出","Your output")}</th><th>${L("結果","Result")}</th></tr></thead><tbody>${rows.map(x=>{
+      if(x.skip)return`<tr class="fail"><td class="small">${esc(x.c.label||"")}</td><td colspan="3">${L("程式中找不到要替換數據的一行，請保留第 1 行的格式。","The line that holds the data was not found. Keep line 1 in its original form.")}</td><td class="res">✗</td></tr>`;
+      const inp=x.c.sub?`<pre>${esc(x.c.sub)}</pre>`:(x.c.inputs&&x.c.inputs.length?`<pre>${esc(x.c.inputs.map(v=>v===""?L("（空白）","(empty)"):v).join("\n"))}</pre>`:`<span class="muted">${L("（無）","(none)")}</span>`);
+      return`<tr class="${x.ok?"pass":"fail"}"><td class="small">${esc(x.c.label||"")}</td><td>${inp}</td><td><pre>${showOut(norm(x.c.expect))}</pre></td><td class="act"><pre>${showOut(x.actual)}</pre>${x.r.err?`<div class="small">${errHTML(x.r.err)}</div>`:""}</td><td class="res">${x.ok?"✓":"✗"}</td></tr>`}).join("")}</tbody></table></div>`;
+    if(!all&&t.hints){const h=t.hints(rows);if(h)hint.innerHTML=`<p class="hint">${L("提示：","Hint: ")}${h}</p>`}
+    if(all&&onPass)onPass();
+  };
+}
+function makeTaskList(host,items,render){
+  let cur=0;const done=items.map(()=>false),panes=items.map(()=>null);
+  host.innerHTML=`<nav class="tlist" aria-label="${L("練習列表","Task list")}"></nav><div class="card" data-main></div>`;
+  const list=host.querySelector(".tlist"),main=host.querySelector("[data-main]");
+  function drawList(){
+    list.innerHTML=`<div class="prog">${L("完成","Done")} ${done.filter(Boolean).length} / ${items.length}</div>`+items.map((it,k)=>`<button type="button" class="${k===cur?"cur":""}" data-k="${k}"><span class="qn">${String(k+1).padStart(2,"0")}</span><span class="qt">${esc(it.short)}</span><span class="qs">${done[k]?"✓":""}</span></button>`).join("");
+  }
+  function select(k){
+    cur=k;drawList();
+    panes.forEach(p=>{if(p)p.hidden=true});
+    if(!panes[k]){const d=document.createElement("div");d.style.display="grid";d.style.gap="14px";main.appendChild(d);panes[k]=d;render(items[k],d,()=>{done[k]=true;drawList()})}
+    panes[k].hidden=false;
+    panes[k].querySelectorAll("textarea.ed").forEach(t=>t.dispatchEvent(new Event("fit")));
+  }
+  list.addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(b)select(+b.dataset.k)});
+  select(0);
+}
+
+/* =============== 1 Validation =============== */
+const CLS='CLASSES = ["4A", "4B", "4C", "4D", "5A", "5B", "5C", "5D", "6A", "6B", "6C", "6D"]';
+const V=(label,inputs,expect)=>({label,inputs,expect});
+const OKs=L("有效","Valid"),NOs=L("無效","Invalid");
+const pName=L("姓名：","Name: "),pCls=L("班別：","Class: "),pPh=L("電話：","Phone: "),pEv=L("報名項目數目：","Number of events: ");
+const ifelse=(cond,ind="")=>`${ind}if ${cond}:\n${ind}    print("${OKs}")\n${ind}else:\n${ind}    print("${NOs}")`;
+const ACC=L("接受報名","Entry accepted"),REJ=L("拒絕報名","Entry rejected");
+const VALID=[
+ {short:L("完整性檢查 · 姓名","Completeness · Name"),title:L("練習 1　完整性檢查","Task 1　Completeness check"),scene:L("姓名不可留空。在第 2 行的空格內填寫條件，然後按「核對」。","The name must not be empty. Fill in the condition in the blank on line 2, then press Check."),
+  blank:`name = input("${pName}")\nif ____:\n    print("${NOs}")\nelse:\n    print("${OKs}")`,
+  tests:[V(L("正常數據","Normal data"),["陳嘉欣"],OKs),V(L("留空","Empty"),[""],NOs),V(L("英文姓名","English name"),["Chan Ka Yan"],OKs)],
+  },
+ {short:L("固定值檢查 · 班別","Fixed value · Class"),title:L("練習 2　固定值檢查","Task 2　Fixed value check"),scene:L("班別必須是列表 <code>CLASSES</code> 內的其中一項。有效時輸出「有效」，否則輸出「無效」。","The class must be one of the items in the list <code>CLASSES</code>. Output \"Valid\" if it is, otherwise \"Invalid\"."),
+  starter:CLS+`\ncls = input("${pCls}")\n# ${L("在下面寫出固定值檢查","write the fixed value check below")}\n`,
+  tests:[V(L("正常數據","Normal data"),["4A"],OKs),V(L("列表最後一項","Last item in list"),["6D"],OKs),V(L("不存在的班別","Class that does not exist"),["4E"],NOs),V(L("不存在的級別","Form that does not exist"),["7A"],NOs),V(L("小寫字母","Lower case"),["4a"],NOs),V(L("留空","Empty"),[""],NOs)],
+  },
+ {short:L("長度檢查 · 電話","Length · Phone"),title:L("練習 3　長度檢查","Task 3　Length check"),scene:L("聯絡電話必須剛好有 8 個字符。有效時輸出「有效」，否則輸出「無效」。","The phone number must have exactly 8 characters. Output \"Valid\" or \"Invalid\"."),
+  starter:`phone = input("${pPh}")\n# ${L("在下面寫出長度檢查","write the length check below")}\n`,
+  tests:[V(L("正常數據","Normal data"),["91234567"],OKs),V(L("7 個字符","7 characters"),["9123456"],NOs),V(L("9 個字符","9 characters"),["912345678"],NOs),V(L("留空","Empty"),[""],NOs)],
+  },
+ {short:L("類型檢查 · 電話","Type · Phone"),title:L("練習 4　類型檢查","Task 4　Type check"),scene:L("聯絡電話的每個字符都必須是數字。逐個字符檢查，如有一個字符不是 \"0\" 至 \"9\"，便把 <code>valid</code> 設為 <code>False</code>。","Every character of the phone number must be a digit. Check each character; if any is not \"0\" to \"9\", set <code>valid</code> to <code>False</code>."),
+  starter:`phone = input("${pPh}")\nvalid = True\n# ${L("用 for 循環逐個字符檢查","check each character with a for loop")}\n\n`+ifelse("valid == True"),
+  tests:[V(L("正常數據","Normal data"),["91234567"],OKs),V(L("中間有空格","Space inside"),["9123 4567"],NOs),V(L("有英文字母","Contains a letter"),["9123456A"],NOs),V(L("有符號","Contains a symbol"),["9123-456"],NOs)],
+  hints:()=>L('用 <code>for c in phone:</code> 逐個取出字符，再用 <code>if c &lt; "0" or c &gt; "9":</code> 判斷。','Use <code>for c in phone:</code> to take each character, then test it with <code>if c &lt; "0" or c &gt; "9":</code>.'),
+  },
+ {short:L("格式檢查 · 電話","Format · Phone"),title:L("練習 5　格式檢查","Task 5　Format check"),scene:L("聯絡電話的第一個字符必須是 5、6 或 9。有效時輸出「有效」，否則輸出「無效」。","The first character of the phone number must be 5, 6 or 9. Output \"Valid\" or \"Invalid\"."),
+  starter:`phone = input("${pPh}")\n# ${L("在下面寫出格式檢查","write the format check below")}\n`,
+  tests:[V(L("以 9 開首","Starts with 9"),["91234567"],OKs),V(L("以 5 開首","Starts with 5"),["51234567"],OKs),V(L("以 6 開首","Starts with 6"),["61234567"],OKs),V(L("以 2 開首（固網）","Starts with 2 (landline)"),["21234567"],NOs),V(L("以 8 開首","Starts with 8"),["81234567"],NOs),V(L("留空","Empty"),[""],NOs)],
+  hints:rows=>rows.some(x=>x.r&&x.r.err&&x.r.err.tp==="IndexError")?L('輸入留空時 <code>phone[0]</code> 並不存在，程式出現運行時錯誤。先檢查長度，例如 <code>if len(phone) &gt; 0 and ...</code>。','When the input is empty, <code>phone[0]</code> does not exist, so a run-time error occurs. Check the length first, e.g. <code>if len(phone) &gt; 0 and ...</code>.'):L('可用 <code>phone[0] in "569"</code> 檢查第一個字符。','<code>phone[0] in "569"</code> checks the first character.'),
+  },
+ {short:L("範圍檢查 · 項目數目","Range · Events"),title:L("練習 6　範圍檢查","Task 6　Range check"),scene:L("報名項目數目必須是 1 至 3。有效時輸出「有效」，否則輸出「無效」。","The number of events must be from 1 to 3. Output \"Valid\" or \"Invalid\"."),
+  starter:`events = int(input("${pEv}"))\n# ${L("在下面寫出範圍檢查","write the range check below")}\n`,
+  tests:[V(L("下限以下","Below lower limit"),["0"],NOs),V(L("下限","Lower limit"),["1"],OKs),V(L("正常數據","Normal data"),["2"],OKs),V(L("上限","Upper limit"),["3"],OKs),V(L("上限以上","Above upper limit"),["4"],NOs),V(L("負數","Negative"),["-1"],NOs)],
+  hints:rows=>{const f=rows.filter(x=>!x.ok).map(x=>x.c.inputs[0]);return f.length?L(`輸入 ${f.join("、")} 時結果不對。檢查是否用了 &gt; 代替 &gt;=，或 &lt; 代替 &lt;=。`,`The result is wrong for ${f.join(", ")}. Check whether you used &gt; instead of &gt;=, or &lt; instead of &lt;=.`):null},
+  },
+];
+makeTaskList($("#validTasks"),VALID,(t,pane,onPass)=>{
+  pane.innerHTML=`<h3>${t.title}</h3><p>${t.scene}</p><div data-t style="display:grid;gap:14px"></div>`;
+  makeTask(pane.querySelector("[data-t]"),{...t,req:null,ownDefault:t.tests[0].inputs.join("\n")},onPass);
+});
+
+/* =============== 2 Boundary =============== */
+const G={inv:L("輸入無效","Invalid input"),no:L("未達標","Not yet"),br:L("銅","Bronze"),si:L("銀","Silver"),go:L("金","Gold")};
+const FIT_CODE=`score = int(input("${L("仰臥起坐次數：","Sit-ups: ")}"))\nif score < 0 or score > 80:\n    print("${G.inv}")\nelif score >= 40:\n    print("${G.go}")\nelif score > 30:\n    print("${G.si}")\nelif score >= 20:\n    print("${G.br}")\nelse:\n    print("${G.no}")`;
+const EDGES=[[-1,0],[19,20],[29,30],[39,40],[80,81]];
+const EDGE_IN=new Set([0,19,20,29,30,39,40,80]),EDGE_OUT=new Set([-1,81]);
+const PATHS=[G.inv,G.no,G.br,G.si,G.go];
+let tds=[{raw:"25"},{raw:"45"},{raw:"90"}],codeDirty=false,everMismatch=false,lastPct=0;
+const fitEd=makeEditor($("#fitEd"),FIT_CODE,{title:L("評級程式（可修改）","Award program (editable)"),onChange:()=>{codeDirty=true;fitGoals()}});
+function classify(raw){
+  if(!/^-?\d+$/.test(raw.trim()))return{cat:"invalid",cl:L("無效數據（類型）","Invalid data (type)"),out:null};
+  const v=parseInt(raw,10);
+  const out=v<0||v>80?G.inv:v>=40?G.go:v>=30?G.si:v>=20?G.br:G.no;
+  if(EDGE_IN.has(v))return{v,cat:"edge",cl:L("邊界數據","Boundary data"),out};
+  if(EDGE_OUT.has(v))return{v,cat:"invalid",cl:L("無效數據（邊界外）","Invalid data (just outside)"),out};
+  if(v<0||v>80)return{v,cat:"invalid",cl:L("無效數據","Invalid data"),out};
+  return{v,cat:"normal",cl:L("正常數據","Normal data"),out};
+}
+async function runOne(t){
+  t.pending=true;tdRender();
+  const r=await runPy(fitEd.get(),[t.raw]);
+  t.pending=false;t.r=r;const c=classify(t.raw);
+  t.ok=c.out===null?!!(r.err&&r.err.tp==="ValueError"):(!r.err&&norm(r.out)===c.out);
+  if(!t.ok)everMismatch=true;
+  fitEd.mark(r.err&&r.err.kind!=="runtime"?r.err.line:null);
+  tdRender();
+}
+async function runAll(){codeDirty=false;for(const t of tds.slice())await runOne(t);fitGoals()}
+function drawLine(vals){
+  const W=640,H=118,x0=30,x1=610,lo=-10,hi=90,X=v=>x0+(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo)*(x1-x0);
+  const zones=[[lo,-0.5,L("無效","Invalid"),"var(--bad-soft)"],[-0.5,19.5,G.no,"var(--sunk)"],[19.5,29.5,G.br,"var(--warn-soft)"],[29.5,39.5,G.si,"var(--accent-soft)"],[39.5,80.5,G.go,"var(--ok-soft)"],[80.5,hi,L("無效","Invalid"),"var(--bad-soft)"]];
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L("0 至 80 的數線及已選測試數據","Number line from 0 to 80 with the chosen test data")}">`;
+  zones.forEach(z=>{s+=`<rect x="${X(z[0])}" y="34" width="${X(z[1])-X(z[0])}" height="26" style="fill:${z[3]}"/><text x="${(X(z[0])+X(z[1]))/2}" y="52" text-anchor="middle" font-size="12" style="fill:var(--ink)" font-family="Noto Sans TC,sans-serif">${z[2]}</text>`});
+  s+=`<line x1="${x0}" y1="60" x2="${x1}" y2="60" style="stroke:var(--ink)" stroke-width="1.5"/>`;
+  [[0,"-1|0"],[20,"19|20"],[30,"29|30"],[40,"39|40"],[81,"80|81"]].forEach(([t,lab])=>{s+=`<line x1="${X(t-0.5)}" y1="30" x2="${X(t-0.5)}" y2="66" style="stroke:var(--ink)" stroke-dasharray="3 3"/><text x="${X(t-0.5)}" y="80" text-anchor="middle" font-size="12" style="fill:var(--muted)" font-family="JetBrains Mono,monospace">${lab}</text>`});
+  let lastX=-99,row=0;
+  [...new Set(vals)].sort((a,b)=>a-b).forEach(v=>{const x=X(v);const off=v<lo||v>hi;
+    row=x-lastX<22?(row+1)%2:0;lastX=x;
+    s+=`<circle cx="${x}" cy="${row?14:24}" r="5" style="fill:var(--accent);stroke:var(--surface)" stroke-width="1.5"/>`;
+    s+=`<text x="${x}" y="${row?H-2:H-16}" text-anchor="middle" font-size="11" style="fill:var(--accent)" font-family="JetBrains Mono,monospace">${off?(v<lo?"◀":"▶")+v:v}</text>`;});
+  $("#numline").innerHTML=s+"</svg>";
+}
+function tdRender(){
+  const info=tds.map(t=>classify(t.raw));
+  $("#tdBody").innerHTML=tds.length?tds.map((t,k)=>{
+    const c=info[k],exp=c.out===null?L("（運行時錯誤 ValueError）","(run-time error ValueError)"):c.out;
+    let act=`<span class="muted">${L("執行中……","Running…")}</span>`,res="";
+    if(!t.pending&&t.r){act=((t.r.out?`<pre>${esc(norm(t.r.out))}</pre>`:"")+(t.r.err?`<div class="small">${errHTML(t.r.err)}</div>`:""))||NOOUT;res=t.ok?"✓":"✗"}
+    return`<tr class="${t.r&&!t.pending?(t.ok?"pass":"fail"):""}"><td class="num">${esc(t.raw)}</td><td><span class="cat ${c.cat}">${c.cl}</span></td><td>${esc(exp)}</td><td class="act">${act}</td><td class="res">${res}</td><td><button class="x" data-k="${k}" aria-label="${L("刪除","Delete")} ${esc(t.raw)}">×</button></td></tr>`}).join(""):`<tr><td colspan="6" class="muted">${L("未有測試數據。試輸入 20。","No test data yet. Try 20.")}</td></tr>`;
+  const nums=info.filter(i=>i.v!==undefined).map(i=>i.v),set=new Set(nums),outs=new Set(info.map(i=>i.out));
+  let done=0;const total=PATHS.length+EDGES.length*2;
+  $("#covPaths").innerHTML=PATHS.map(p=>{const d=outs.has(p);if(d)done++;return`<div class="cv ${d?"done":""}"><b>${p}</b>${d?L("已測試","Tested"):L("未測試","Not tested")}</div>`}).join("");
+  $("#covEdges").innerHTML=EDGES.map(([a,b])=>{const da=set.has(a),db=set.has(b);done+=da+db;return`<div class="cv ${da&&db?"done":""}"><b>${a} | ${b}</b>${da?"✓":"✗"} ${a}　${db?"✓":"✗"} ${b}</div>`}).join("");
+  lastPct=Math.round(done/total*100);$("#covBar").style.width=lastPct+"%";$("#covPct").textContent=lastPct+"%";
+  drawLine(nums);fitGoals();
+}
+function fitGoals(){
+  const ran=tds.length>0&&tds.every(t=>t.r&&!t.pending);
+  const allOk=ran&&tds.every(t=>t.ok)&&!codeDirty;
+  const g=[[L("找出一個令實際輸出與預期不同的測試數據","Find a test value whose actual output differs from the expected output"),everMismatch],[L("修改程式，然後按「用修改後的程式重新執行全部」，全部測試通過","Edit the program, press \"Re-run all with the edited program\", and pass every test"),everMismatch&&allOk],[L("覆蓋程度達到 100%，而且全部測試通過","Reach 100% coverage with every test passing"),everMismatch&&allOk&&lastPct===100]];
+  $("#fitGoals").innerHTML=`<li><b>${L("任務","Tasks")}</b></li>`+g.map(([t,d])=>`<li><span class="tick ${d?"done":""}">${d?"✓":""}</span><span>${t}</span></li>`).join("")+(codeDirty?`<li class="small" style="color:var(--warn)">${L("程式已修改，表內結果仍是舊程式的結果。","The program has changed. The table still shows results from the old program.")}</li>`:"");
+}
+function tdAdd(){const raw=$("#tdInput").value.trim();if(!raw)return;$("#tdInput").value="";if(tds.some(t=>t.raw===raw))return;const t={raw};tds.push(t);runOne(t);$("#tdInput").focus()}
+$("#tdAdd").onclick=tdAdd;$("#tdInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing){e.preventDefault();tdAdd()}});
+$("#tdRerun").onclick=runAll;
+$("#tdClear").onclick=()=>{tds=[];tdRender()};
+$("#tdBody").addEventListener("click",e=>{const b=e.target.closest(".x");if(b){tds.splice(+b.dataset.k,1);tdRender()}});
+
+/* =============== 3 Error detective =============== */
+const TN={syntax:KIND.syntax,runtime:KIND.runtime,logic:KIND.timeout};
+const T=(label,inputs,expect)=>({label,inputs,expect});
+const EQ=[
+ {short:L("小食部總價","Tuck shop total"),pill:L("小食部","Tuck shop"),scene:L("計算三件小食的總價，預期輸出 26。","Calculate the total price of three snacks. The expected output is 26."),t:"syntax",lines:[3],
+  code:"prices = [8, 12, 6]\ntotal = 0\nfor i in range(len(prices))\n    total = total + prices[i]\nprint(total)",
+  hint:L("留意 for 語句的寫法：開始一個縮排區塊之前，Python 要求寫甚麼？","Look closely at how the for statement is written. What must come before an indented block?"),
+  why:L("第 3 行 for 語句後漏了冒號，違反 Python 語法，程式不能開始執行。","Line 3 is missing the colon after the for statement. This breaks Python syntax, so the program cannot start."),
+  tests:[T(L("原本數據","Original data"),[],"26")]},
+ {short:L("班會籌款平均","Class fund average"),pill:L("班會籌款","Class fund"),scene:L("輸入捐款人數及每人金額，計算平均每人捐款。今日未有人捐款，班長輸入人數 0，程式中途停止。","Enter the number of donors and each amount, then calculate the average. No one has donated today, so the monitor enters 0 and the program stops part way."),t:"runtime",lines:[5],
+  code:`n = int(input("${L("捐款人數：","Donors: ")}"))\ntotal = 0\nfor i in range(n):\n    total = total + int(input("${L("金額：","Amount: ")}"))\naverage = total / n\nprint("${L("平均每人捐款：","Average donation:")}", average)`,
+  hint:L("代入 n = 0，逐行想想每一行會做甚麼計算。","Use n = 0 and work out what each line calculates."),
+  why:L("n 是 0 時，第 5 行出現除以零（ZeroDivisionError），程式在執行期間停止。語法完全正確，所以不是語法錯誤。","When n is 0, line 5 divides by zero (ZeroDivisionError) and the program stops while running. The syntax is correct, so it is not a syntax error."),
+  req:L("人數是 0 時輸出「未有捐款」，其他情況照常輸出平均值。","When the number of donors is 0, output \"No donations\". Otherwise output the average as before."),
+  tests:[T(L("3 人捐款","3 donors"),["3","20","30","10"],L("平均每人捐款： 20.0","Average donation: 20.0")),T(L("沒有人捐款","No donors"),["0"],L("未有捐款","No donations")),T(L("2 人捐款","2 donors"),["2","15","16"],L("平均每人捐款： 15.5","Average donation: 15.5"))],
+  },
+ {short:L("天文台最低氣溫","Lowest temperature"),pill:L("天文台","Observatory"),scene:L("輸入一星期 7 日的氣溫（°C），找出最低氣溫。輸入 18、15、21、16、14、19、17，預期輸出 14，實際輸出 0。","Enter the temperatures (°C) for 7 days and find the lowest. For 18, 15, 21, 16, 14, 19, 17 the expected output is 14, but the actual output is 0."),t:"logic",lines:[4],
+  code:`temps = []\nfor i in range(7):\n    temps.append(int(input("${L("氣溫：","Temperature: ")}")))\nlowest = 0\nfor i in range(len(temps)):\n    if temps[i] < lowest:\n        lowest = temps[i]\nprint("${L("最低氣溫：","Lowest temperature:")}", lowest)`,
+  hint:L("代入第一個氣溫 18，temps[i] < lowest 成立嗎？lowest 由甚麼值開始？","Use the first temperature, 18. Is temps[i] < lowest True? What value does lowest start with?"),
+  why:L("程式能完成執行，但 lowest 的初始值 0 比所有氣溫都低，條件永遠不成立，輸出 0。初始值應設為列表的第一個項目。","The program finishes, but the initial value 0 is lower than every temperature, so the condition is never True and the output is 0. The initial value should be the first item of the list."),
+  tests:[T(L("十月","October"),["18","15","21","16","14","19","17"],L("最低氣溫： 14","Lowest temperature: 14")),T(L("七月","July"),["28","29","27","30","31","26","28"],L("最低氣溫： 26","Lowest temperature: 26")),T(L("寒流","Cold spell"),["12","10","9","11","13","15","8"],L("最低氣溫： 8","Lowest temperature: 8"))],
+  },
+ {short:L("優異獎","Merit award"),pill:L("優異獎","Merit award"),scene:L("測驗 85 分或以上可獲優異獎。輸入 85，程式沒有顯示「優異獎」。","A test mark of 85 or above earns a merit award. When 85 is entered, the program does not show \"Merit award\"."),t:"logic",lines:[2],
+  code:`mark = int(input("${L("分數：","Mark: ")}"))\nif mark > 85:\n    print("${L("優異獎","Merit award")}")\nprint("${L("完成","Done")}")`,
+  hint:L("輸入 85 時，每個條件是 True 還是 False？「或以上」包不包括 85？","When 85 is entered, is each condition True or False? Does \"or above\" include 85?"),
+  why:L("「或以上」包括 85，但條件用了 >，邊界值 85 被排除。程式沒有中止，只是結果錯誤，屬邏輯錯誤。這類錯誤要用邊界數據 85 才能發現。","\"Or above\" includes 85, but the condition uses >, so the boundary value 85 is excluded. The program does not stop; the result is just wrong, so it is a logic error. Only the boundary value 85 reveals it."),
+  tests:[T(L("邊界值","Boundary value"),["85"],L("優異獎\n完成","Merit award\nDone")),T(L("邊界以下","Below boundary"),["84"],L("完成","Done")),T(L("正常數據","Normal data"),["92"],L("優異獎\n完成","Merit award\nDone"))],
+  },
+ {short:L("三日步數","Three days of steps"),pill:L("步數記錄","Step log"),scene:L("顯示三日的步數。程式顯示了三行後停止，並出現錯誤訊息。","Display the steps for three days. The program shows three lines, then stops with an error message."),t:"runtime",lines:[2,3],
+  code:`steps = [8200, 10500, 6400]\nfor i in range(len(steps) + 1):\n    print("${L("第","Day")}", i + 1, "${L("日：",":")}", steps[i])`,
+  hint:L("列出 range(len(steps) + 1) 產生的每個 i 值，steps 有沒有這些索引？","List every value of i produced by range(len(steps) + 1). Does steps have all of these indexes?"),
+  why:L("i 去到 3 時，第 3 行讀取 steps[3]，但索引只有 0 至 2，出現索引超出範圍（IndexError），程式中途停止。錯誤在第 3 行發生，原因是第 2 行的循環範圍多了 1，兩行都接受。","When i reaches 3, line 3 reads steps[3], but the indexes are only 0 to 2, so an IndexError stops the program. The error happens on line 3 because the range on line 2 is one too many; both lines are accepted."),
+  tests:[T(L("原本數據","Original data"),[],L("第 1 日： 8200\n第 2 日： 10500\n第 3 日： 6400","Day 1 : 8200\nDay 2 : 10500\nDay 3 : 6400"))],
+  },
+ {short:L("滿分","Full marks"),pill:L("滿分","Full marks"),scene:L("輸入分數，100 分時顯示「滿分！」。程式不能執行。","Enter a mark and show \"Full marks!\" for 100. The program will not run."),t:"syntax",lines:[2],
+  code:`mark = int(input("${L("分數：","Mark: ")}"))\nif mark = 100:\n    print("${L("滿分！","Full marks!")}")`,
+  hint:L("比較「賦值」和「比較是否相等」在 Python 的寫法。","Compare how Python writes assignment and how it tests whether two values are equal."),
+  why:L("比較是否相等要用 ==。= 是賦值，不可放在 if 條件中，翻譯時已出錯。","Testing for equality uses ==. A single = is assignment and cannot be used in an if condition, so the error appears during translation."),
+  tests:[T(L("滿分","Full marks"),["100"],L("滿分！","Full marks!")),T(L("非滿分","Not full marks"),["99"],"")],
+  },
+ {short:L("新年倒數","New Year countdown"),pill:L("倒數","Countdown"),scene:L("新年倒數 10 至 1，然後顯示「新年快樂！」。程式不停顯示 10。","Count down from 10 to 1, then show \"Happy New Year!\". The program keeps showing 10."),t:"logic",lines:[2,3],
+  code:`n = 10\nwhile n > 0:\n    print(n)\nprint("${L("新年快樂！","Happy New Year!")}")`,
+  hint:L("每次循環之後，n 的值有沒有改變？程式有沒有錯誤訊息？","After each pass of the loop, does n change? Is there an error message?"),
+  why:L("循環內沒有更新 n，n > 0 永遠成立，形成無限循環。程式沒有錯誤訊息，屬邏輯錯誤。應在循環內加入 n = n - 1。","n is never updated inside the loop, so n > 0 is always True and the loop never ends. There is no error message, so it is a logic error. Add n = n - 1 inside the loop."),
+  tests:[T(L("倒數","Countdown"),[],"10\n9\n8\n7\n6\n5\n4\n3\n2\n1\n"+L("新年快樂！","Happy New Year!"))],
+  },
+];
+makeTaskList($("#errTasks"),EQ,(q,pane,onPass)=>{
+  pane.innerHTML=`<div class="scene"><span class="pill">${esc(q.pill)}</span><span>${esc(q.scene)}</span></div>
+  <div class="stepno">${L("第一步：點選出錯的一行，再選錯誤類型","STEP 1: CLICK THE LINE WITH THE ERROR, THEN CHOOSE ITS TYPE")}</div>
+  <pre class="code pick" data-code></pre>
+  <div class="choices">${["syntax","runtime","logic"].map(t=>`<button class="choice t-${t}" data-t="${t}" aria-pressed="false">${TN[t]}</button>`).join("")}</div>
+  <div class="row"><button class="btn primary" data-check>${L("檢查答案","Check answer")}</button><button class="btn" data-reveal hidden>${L("顯示答案","Show answer")}</button><span class="small muted" data-hint></span></div>
+  <div data-fb hidden></div>
+  <div data-step2 hidden style="display:grid;gap:12px"><div class="stepno">${L("第二步：改正程式，再核對","STEP 2: FIX THE PROGRAM, THEN CHECK")}</div><div data-task style="display:grid;gap:14px"></div></div>`;
+  const codeEl=pane.querySelector("[data-code]");renderCode(codeEl,q.code.split("\n"));
+  let line=null,type=null,solved=false,tries=0;
+  const fb=pane.querySelector("[data-fb]"),hintEl=pane.querySelector("[data-hint]"),checkBtn=pane.querySelector("[data-check]"),revealBtn=pane.querySelector("[data-reveal]");
+  codeEl.addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||solved)return;codeEl.querySelectorAll(".ln").forEach(x=>x.classList.remove("sel"));l.classList.add("sel");line=+l.dataset.n});
+  pane.querySelector(".choices").addEventListener("click",e=>{const b=e.target.closest(".choice");if(!b||solved)return;type=b.dataset.t;pane.querySelectorAll(".choice").forEach(x=>x.setAttribute("aria-pressed",String(x===b)))});
+  function finish(ok){
+    solved=true;checkBtn.disabled=true;revealBtn.hidden=true;hintEl.textContent="";
+    codeEl.querySelectorAll(".ln").forEach(x=>{x.classList.remove("sel");if(q.lines.includes(+x.dataset.n))x.classList.add("good")});
+    pane.querySelectorAll(".choice").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.t===q.t)));
+    fb.hidden=false;fb.className="fb "+(ok?"ok":"no");
+    const lines=q.lines.join(L(" 或 "," or "));
+    fb.innerHTML=`<h4>${ok?L("答對了：","Correct: "):L("答案：","Answer: ")}${L(`這是${TN[q.t]}，在第 ${lines} 行`,`this is a ${TN[q.t].toLowerCase()} on line ${lines}`)}</h4><p>${esc(q.why)}</p>`;
+    pane.querySelector("[data-step2]").hidden=false;
+    makeTask(pane.querySelector("[data-task]"),{req:q.req||L("改正程式，令它對以下測試數據都輸出正確結果。","Fix the program so that it gives the correct output for the test data."),starter:q.code,tests:q.tests,ownDefault:(q.tests[0].inputs||[]).join("\n")},onPass);
+  }
+  checkBtn.onclick=()=>{
+    if(line===null||type===null){hintEl.textContent=L("請先點選一行，再選錯誤類型。","Click a line and choose an error type first.");return}
+    const lineOK=q.lines.includes(line),typeOK=type===q.t;
+    if(lineOK&&typeOK){finish(true);return}
+    tries++;hintEl.textContent="";
+    const what=lineOK?L("出錯的一行選對了，但錯誤類型不對。","You chose the right line, but the type of error is wrong."):typeOK?L("錯誤類型選對了，但出錯的不是這一行。","You chose the right type of error, but not the right line."):L("出錯的一行和錯誤類型都不對。","Both the line and the type of error are wrong.");
+    const ask=typeOK?"":L("想想：這個程式能否開始執行？執行時會否中途停止？","Think: can this program start running? Does it stop part way?");
+    fb.hidden=false;fb.className="fb no";
+    fb.innerHTML=`<h4>${L("再想想","Try again")}（${L("第 "+tries+" 次","attempt "+tries)}）</h4><p>${what} ${ask}</p><p class="small"><b>${L("提示：","Hint: ")}</b>${esc(q.hint)}</p>`;
+    if(tries>=2)revealBtn.hidden=false;
+  };
+  revealBtn.onclick=()=>finish(false);
+});
+
+/* =============== 4 Trace =============== */
+const STEPS=[11000,10000,12000,8000,10000,15000,7000];
+const DONE=L("達標日數：","Days reaching target:");
+const DBG_LINES=["steps = [11000, 10000, 12000, 8000, 10000, 15000, 7000]","count = 0","for i in range(1, len(steps)):","    if steps[i] > 10000:","        count = count + 1",`print("${DONE}", count)`];
+renderCode($("#dbgCode"),DBG_LINES);
+const dbgEv=(()=>{const ev=[];let count;ev.push({line:1,v:{}});count=0;ev.push({line:2,v:{count}});
+  for(let i=1;i<STEPS.length;i++){ev.push({line:3,v:{i,count}});const c=STEPS[i]>10000;ev.push({line:4,v:{i,s:STEPS[i],cond:c,count}});if(c){count++;ev.push({line:5,v:{i,s:STEPS[i],count}})}}
+  ev.push({line:6,v:{count},out:DONE+" "+count});return ev})();
+let dbgPos=-1;
+function dbgShow(){
+  document.querySelectorAll("#dbgCode .ln").forEach(l=>l.classList.toggle("cur",dbgPos>=0&&dbgEv[dbgPos].line===+l.dataset.n));
+  const cur=dbgPos>=0?dbgEv[dbgPos]:null,prev=dbgPos>0?dbgEv[dbgPos-1]:null,vv=cur?cur.v:{},pv=prev?prev.v:{};
+  const cells=[["i",vv.i],["steps[i]",vv.s],[L("條件","condition"),vv.cond===undefined?undefined:(vv.cond?"True":"False")],["count",vv.count]];
+  $("#dbgVars").innerHTML=cells.map(([k,v])=>`<div class="var ${(k==="count"&&prev&&pv.count!==vv.count&&vv.count!==undefined)||(k==="i"&&cur&&cur.line===3)?"chg":""}"><div class="k">${k}</div><div class="v">${v===undefined?"–":v}</div></div>`).join("");
+  $("#dbgTrace").innerHTML=dbgEv.slice(0,dbgPos+1).map((e,k)=>`<tr class="${k===dbgPos?"now":""}"><td class="num">${e.line}</td><td class="num">${e.v.i??""}</td><td class="num">${e.v.s??""}</td><td class="num">${e.v.cond===undefined?"":e.v.cond?"True":"False"}</td><td class="num">${e.v.count??""}</td></tr>`).join("")||`<tr><td colspan="5" class="muted">${L("按「下一步」開始。追蹤表會逐行填寫。","Press Next to start. The trace table fills in line by line.")}</td></tr>`;
+  const box=document.querySelector(".trace");box.scrollTop=box.scrollHeight;
+  $("#dbgOut").textContent=dbgPos===dbgEv.length-1?dbgEv[dbgPos].out:"";
+  $("#dbgCount").textContent=L(`第 ${dbgPos+1} / ${dbgEv.length} 步`,`Step ${dbgPos+1} of ${dbgEv.length}`);
+  $("#dbgStep").disabled=$("#dbgEnd").disabled=dbgPos>=dbgEv.length-1;$("#dbgPrev").disabled=dbgPos<0;
+}
+$("#dbgStep").onclick=()=>{dbgPos++;dbgShow()};$("#dbgPrev").onclick=()=>{dbgPos--;dbgShow()};
+$("#dbgEnd").onclick=()=>{dbgPos=dbgEv.length-1;dbgShow()};$("#dbgReset").onclick=()=>{dbgPos=-1;dbgShow()};
+dbgShow();
+makeTask($("#traceTask"),{starter:DBG_LINES.join("\n"),lastLine:true,subRe:/^steps\s*=.*$/m,
+  tests:[{label:L("原本數據","Original data"),sub:"steps = [11000, 10000, 12000, 8000, 10000, 15000, 7000]",expect:DONE+" 5",key:"orig"},
+         {label:L("第一日達標","Day 1 reaches target"),sub:"steps = [12000, 9999, 10000, 8000, 8000, 8000, 8000]",expect:DONE+" 2",key:"first"},
+         {label:L("全部剛好 10000","All exactly 10000"),sub:"steps = [10000, 10000, 10000, 10000, 10000, 10000, 10000]",expect:DONE+" 7",key:"edge"},
+         {label:L("全部未達標","None reach target"),sub:"steps = [9999, 5000, 3000, 8000, 7000, 6000, 9000]",expect:DONE+" 0",key:"none"}],
+  hints:rows=>{const a=rows.some(x=>x.c.key==="first"&&!x.ok),b=rows.some(x=>x.c.key==="edge"&&!x.ok);return[a?L("第一日的步數沒有被檢查：range 應由 0 開始。","Day 1 is never checked: range should start at 0."):"",b?L("10000 步應算達標：條件要包括 10000。","10000 steps should reach the target: the condition must include 10000."):""].filter(Boolean).join(" ")||null},
+  ownPh:L("這個程式不需要輸入","This program needs no input")},null);
+
+/* =============== 5 Efficiency =============== */
+let hw=[true,true,true,true,true,false,true,true,false,true];
+renderCode($("#alg1"),["all_done = True","for i in range(n):","    if hw[i] == False:","        all_done = False","print(all_done)"]);
+renderCode($("#alg2"),["all_done = True","i = 0","while i < n and all_done == True:","    if hw[i] == False:","        all_done = False","    i = i + 1","print(all_done)"]);
+function hwCounts(){const n=hw.length,first=hw.indexOf(false);return{c1:n,c2:first<0?n:first+1,first}}
+function hwRender(){
+  $("#hwRow").innerHTML=hw.map((h,k)=>`<button class="hw ${h?"":"miss"}" data-k="${k}" aria-label="${k+1} ${h?L("已交","in"):L("未交","missing")}"><span><b>${k+1}</b>${h?L("已交","In"):L("未交","Missing")}</span></button>`).join("");
+  const{c1,c2,first}=hwCounts();
+  const row=(lab,c)=>`<span class="lab2">${lab}</span>`+hw.map((_,k)=>`<i class="${k<c?"on":""}"></i>`).join("");
+  $("#scan1").innerHTML=row("ALG1",c1);$("#scan2").innerHTML=row("ALG2",c2);
+  $("#c1").textContent=c1;$("#c2").textContent=c2;$("#c3").textContent=(first<0?"True":"False")+L("（相同）"," (same)");
+}
+$("#hwRow").addEventListener("click",e=>{const b=e.target.closest(".hw");if(b){const k=+b.dataset.k;hw[k]=!hw[k];$("#hwReveal").hidden=true;$("#prFb").textContent=L("列表改變了，請再預測。","The list has changed. Predict again.");hwRender()}});
+$("#prShow").onclick=()=>{const{c1,c2}=hwCounts(),p1=$("#pr1").value.trim(),p2=$("#pr2").value.trim();
+  $("#hwReveal").hidden=false;
+  if(p1===""&&p2===""){$("#prFb").textContent="";return}
+  const ok1=+p1===c1,ok2=+p2===c2,Y='<b style="color:var(--ok)">✓</b>',N='<b style="color:var(--bad)">✗</b>';
+  $("#prFb").innerHTML=`ALG1 ${ok1?Y:N}　ALG2 ${ok2?Y:N+L("（ALG2 在第一個未交的位置停止）"," (ALG2 stops at the first missing copy)")}`};
+hwRender();
+const HWBASE='hw = [True, True, False, True, True]\nn = len(hw)\nchecks = 0\nall_done = True\nfor i in range(n):\n    checks = checks + 1\n    if hw[i] == False:\n        all_done = False\nprint(all_done)\nprint(checks)';
+makeTask($("#effTask"),{starter:HWBASE,subRe:/^hw\s*=.*$/m,forbid:[[/\bbreak\b/,L("這個練習不可使用 break，試用布爾變量 all_done 控制 while 循環。","Do not use break in this task. Use the Boolean variable all_done to control the while loop.")]],
+  tests:[{label:L("第 3 份未交","Copy 3 missing"),sub:"hw = [True, True, False, True, True]",expect:"False\n3"},
+         {label:L("全部已交","All in"),sub:"hw = [True, True, True, True, True]",expect:"True\n5"},
+         {label:L("第 1 份未交","Copy 1 missing"),sub:"hw = [False, True, True, True, True]",expect:"False\n1"},
+         {label:L("最後一份未交","Last copy missing"),sub:"hw = [True, True, True, True, False]",expect:"False\n5"},
+         {label:L("兩份未交","Two missing"),sub:"hw = [True, False, True, False, True]",expect:"False\n2"}],
+  hints:rows=>rows.some(x=>x.r&&x.r.err&&x.r.err.kind==="timeout")?L("程式陷入無限循環：while 循環內要更新 i。","The program is in an infinite loop: update i inside the while loop."):L("while 的條件要同時檢查 i &lt; n 及 all_done，並在循環內把 i 加 1。","The while condition must test both i &lt; n and all_done, and i must increase by 1 inside the loop."),
+  ownPh:L("這個程式不需要輸入","This program needs no input")},null);
+renderCode($("#mA"),["total = 0","for d in range(1, N + 1):","    total = total + d"]);
+renderCode($("#mB"),["total = N * (N + 1) / 2"]);
+renderCode($("#mC"),["days = []","for d in range(1, N + 1):","    days.append(d)","total = 0","for x in days:","    total = total + x"]);
+function nRender(){
+  const N=+$("#nSlider").value;$("#nVal").textContent=N;$("#nSum").textContent=(N*(N+1)/2).toLocaleString("en");
+  const max=2*N;
+  const items=[[L("方法甲 步數","Method A steps"),N,L("次加法","additions"),""],[L("方法乙 步數","Method B steps"),3,L("次運算（×、+、÷）","operations (×, +, ÷)"),""],[L("方法丙 步數","Method C steps"),2*N,L("次（加入列表 + 加法）","(append + add)"),""],[L("方法丙 額外記憶體","Method C extra memory"),N,L("個列表項目","list items"),"mem"]];
+  $("#bars").innerHTML=items.map(([l,v,u,c])=>`<div class="bar"><span>${l}</span><span class="track"><i class="${c}" style="width:${Math.max(1,v/max*100)}%"></i></span><span class="val">${v} <span class="small muted">${u}</span></span></div>`).join("")+`<p class="small muted">${L("步數只計算主要的算術運算及加入列表，不計循環本身的控制。","Steps count only the main arithmetic operations and appends, not the loop control itself.")}</p>`;
+}
+$("#nSlider").addEventListener("input",nRender);nRender();
+
+/* =============== 6 Quiz =============== */
+const QZ=zh?[
+ {q:"天文台程式在氣溫低於 12°C 或達 33°C 或以上時顯示提示：<code>if temp &lt; 12 or temp &gt;= 33:</code>。下列哪組整數數據最適合用來測試這個條件？",
+  o:[["11, 12, 13, 32, 33, 34",1,"正確：兩個邊界（12 及 33）都測試了兩旁的值。"],["12, 33",0,"只有邊界值本身，沒有測試邊界另一旁。"],["0, 20, 40",0,"每個範圍各有一個值，但完全沒有測試邊界。"],["11, 13, 32, 34",0,"漏了 12 及 33 這兩個最容易寫錯（< 或 <=）的值。"]],src:"參考〔2025 1A Q30〕"},
+ {q:"下列哪一句 Python 程式碼會引致<b>運行時錯誤</b>？（假設 <code>scores = [60, 75, 82]</code>）",
+  o:[["<code>print(scores[3])</code>",1,"正確：索引只有 0 至 2，執行時才發現超出範圍，程式中止。"],["<code>print(scores[0]</code>",0,"括號不對稱，翻譯時已出錯，是語法錯誤。"],["<code>avg = scores[0] + scores[1] + scores[2] / 3</code>",0,"可以執行，但沒有括號令只有 scores[2] 被除，是邏輯錯誤。"],["<code>if scores[0] = 60:</code>",0,"if 條件中用了賦值 =，是語法錯誤。"]],src:"題型參考〔2026 1A Q37–38〕"},
+ {q:"志明寫完一個計算圖書逾期罰款的程式，並確定沒有語法錯誤。他下一步最應該做甚麼？",
+  o:[["用包括邊界值的測試數據測試程式",1,"正確：沒有語法錯誤不代表沒有邏輯錯誤，要用測試數據檢查輸出。"],["界定程式的輸入及輸出",0,"界定問題應在編寫程式前完成。"],["加入更多註釋",0,"註釋有助維護，但不能找出錯誤。"],["把程式交給同學使用",0,"未經測試便使用，邏輯錯誤會留給用戶發現。"]],src:"參考〔2021 1A Q30〕"},
+ {q:"下列哪項屬於<b>驗證</b>，而不是有效性檢驗？",
+  o:[["要求用戶輸入新密碼兩次並比較",1,"正確：雙重輸入用來確認輸入時沒有出錯，屬驗證。"],["檢查密碼最少有 8 個字符",0,"長度檢查，屬有效性檢驗。"],["<code>while age &lt; 0: age = int(input())</code>",0,"範圍檢查並要求重新輸入，屬有效性檢驗。"],["檢查班別是否在有效班別列表內",0,"固定值檢查，屬有效性檢驗。"]],src:"參考〔2025 1A Q6、Q31〕"},
+ {q:"考慮以下程式：QCODE若 <code>A = [3, 5, 0, 2, 0, 1]</code>，<code>A[i] == 0</code> 會被執行多少次？",
+  o:[["3",1,"正確：i = 0、1、2 時各比較一次，第三次找到 0，found 變為 True，循環停止。"],["2",0,"漏數了找到 0 的那一次比較。"],["5",0,"這是 A 中第二個 0 的位置，循環在找到第一個 0 後已停止。"],["6",0,"以為循環必定執行 6 次；found 為 True 後循環便停止。"]],src:"參考〔2024 1A Q28、Q31〕"},
+ {q:"莉莉說：「ALG2 比 ALG1 有效率，因為 ALG2 用 while 循環。」哪項最能改善她的答案？",
+  o:[["指出 ALG2 找到結果後便停止，條件語句的執行次數較少",1,"正確：比較效率要說明執行次數。"],["指出 while 循環比 for 循環先進",0,"循環種類本身不決定效率。"],["指出 ALG2 的程式碼行數較少",0,"行數少不代表執行步數少；ALG2 其實行數較多。"],["指出執行 ALG2 的電腦應有較多 RAM",0,"RAM 不會減少算法的執行步數。"]],src:"參考〔2022 1B Q5(c)(ii)〕"},
+]:[
+ {q:"An Observatory program shows an alert when the temperature is below 12°C or is 33°C or above: <code>if temp &lt; 12 or temp &gt;= 33:</code>. Which set of integer data is the most suitable for testing this condition?",
+  o:[["11, 12, 13, 32, 33, 34",1,"Correct: both sides of both boundaries (12 and 33) are tested."],["12, 33",0,"Only the boundary values themselves; the other side of each boundary is not tested."],["0, 20, 40",0,"One value from each range, but no boundary is tested."],["11, 13, 32, 34",0,"Misses 12 and 33, the values most likely to reveal a < versus <= mistake."]],src:"cf. [2025 1A Q30]"},
+ {q:"Which Python statement causes a <b>run-time error</b>? (Assume <code>scores = [60, 75, 82]</code>.)",
+  o:[["<code>print(scores[3])</code>",1,"Correct: the indexes are only 0 to 2, and this is only found while running, so the program stops."],["<code>print(scores[0]</code>",0,"The brackets do not match, so it fails during translation: a syntax error."],["<code>avg = scores[0] + scores[1] + scores[2] / 3</code>",0,"It runs, but without brackets only scores[2] is divided: a logic error."],["<code>if scores[0] = 60:</code>",0,"Assignment = is used in an if condition: a syntax error."]],src:"question type: [2026 1A Q37–38]"},
+ {q:"Peter has finished a program that calculates library overdue fines and is sure it has no syntax errors. What should he do next?",
+  o:[["Test the program with test data that includes boundary values",1,"Correct: no syntax errors does not mean no logic errors. Test data checks the output."],["Define the inputs and outputs of the program",0,"Defining the problem should be done before writing the program."],["Add more comments",0,"Comments help maintenance but do not find errors."],["Give the program to classmates to use",0,"Using it untested leaves logic errors for users to find."]],src:"cf. [2021 1A Q30]"},
+ {q:"Which of the following is <b>verification</b> rather than validation?",
+  o:[["Asking the user to enter a new password twice and comparing them",1,"Correct: double entry confirms that nothing was mistyped, which is verification."],["Checking that a password has at least 8 characters",0,"A length check, which is validation."],["<code>while age &lt; 0: age = int(input())</code>",0,"A range check with re-entry, which is validation."],["Checking that a class is in the list of valid classes",0,"A fixed value check, which is validation."]],src:"cf. [2025 1A Q6, Q31]"},
+ {q:"Consider the program below. QCODE If <code>A = [3, 5, 0, 2, 0, 1]</code>, how many times is <code>A[i] == 0</code> executed?",
+  o:[["3",1,"Correct: one comparison each for i = 0, 1 and 2. The third finds 0, found becomes True and the loop stops."],["2",0,"Misses the comparison that finds the 0."],["5",0,"This is the position of the second 0; the loop has already stopped at the first."],["6",0,"Assumes the loop always runs 6 times, but it stops once found is True."]],src:"cf. [2024 1A Q28, Q31]"},
+ {q:"Mary says, \"ALG2 is more efficient than ALG1 because ALG2 uses a while loop.\" Which of the following best improves her answer?",
+  o:[["State that ALG2 stops once the result is found, so the condition is executed fewer times",1,"Correct: efficiency must be explained by the number of executions."],["State that a while loop is more advanced than a for loop",0,"The kind of loop does not decide efficiency by itself."],["State that ALG2 has fewer lines of code",0,"Fewer lines does not mean fewer steps; ALG2 actually has more lines."],["State that the computer running ALG2 should have more RAM",0,"RAM does not reduce the number of steps of an algorithm."]],src:"cf. [2022 1B Q5(c)(ii)]"},
+];
+const QCODE=codeHTML("i = 0\nfound = False\nwhile i < 6 and found == False:\n    if A[i] == 0:\n        found = True\n    i = i + 1").replace('<pre class="code">','<pre class="code" style="margin:8px 0">');
+QZ[4].q=QZ[4].q.replace("QCODE",QCODE);
+[1,2,0,3,1,2].forEach((r,k)=>{const o=QZ[k].o;QZ[k].o=o.slice(o.length-r).concat(o.slice(0,o.length-r))});
+const qzAns=QZ.map(()=>null);
+function qzRender(){
+  $("#qzList").innerHTML=QZ.map((q,k)=>{const a=qzAns[k];
+    return`<div class="mcq"><div><b>${k+1}.</b> ${q.q} <span class="cite">${q.src}</span></div><div class="opts">${q.o.map((o,j)=>{
+      const cls=a===null?"":(o[1]?"right":(a===j?"wrong":""));
+      return`<button class="opt ${cls}" data-q="${k}" data-j="${j}" ${a!==null?"disabled":""}><span class="lt">${"ABCD"[j]}</span><span>${o[0]}</span>${a!==null?`<span class="why">${o[2]}</span>`:""}</button>`}).join("")}</div></div>`}).join("");
+  const done=qzAns.filter(x=>x!==null).length,right=qzAns.filter((x,k)=>x!==null&&QZ[k].o[x][1]).length;
+  $("#qzScore").textContent=L(`得分 ${right} / ${QZ.length}`,`Score ${right} / ${QZ.length}`)+(done<QZ.length?L(`（已答 ${done} 題）`,` (${done} answered)`):"");
+}
+$("#qzList").addEventListener("click",e=>{const b=e.target.closest(".opt");if(!b||b.disabled)return;qzAns[+b.dataset.q]=+b.dataset.j;qzRender()});
+$("#qzReset").onclick=()=>{qzAns.fill(null);qzRender()};
+qzRender();
+
+/* show tab */
+tdRender();if(engineOK)runAll();
+const h=(location.hash||"").slice(1);showTab(document.getElementById("tab-"+h)?h:(store.get("tab")||"valid"));
+}
+
+start(store.get("lang")==="en"?"en":"zh");
+})();
+</script>
+</body></html>
